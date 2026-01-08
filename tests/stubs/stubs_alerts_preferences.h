@@ -13,3 +13,11 @@ VibeIntensity alerts_preferences_get_vibe_intensity(void) {
 bool alerts_preferences_get_notification_alternative_design(void) {
   return false;
 }
+
+DndNotificationMode alerts_preferences_dnd_get_show_notifications(void) {
+  return DndNotificationModeShow;
+}
+
+bool alerts_preferences_get_notification_vibe_delay(void) {
+  return false;
+}
