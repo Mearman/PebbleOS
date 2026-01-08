@@ -120,7 +120,7 @@ jobs:
         uses: mikepenz/action-junit-report@v5
         if: success() || failure()
         with:
-          report_paths: build/test/junit.xml
+          report_paths: ${{ github.workspace }}/build/test/junit.xml
 
       - name: Store failed test images
         uses: actions/upload-artifact@v4
