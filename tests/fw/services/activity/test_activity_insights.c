@@ -78,6 +78,10 @@ bool activity_prefs_sleep_insights_are_enabled(void) {
   return true;
 }
 
+bool activity_is_initialized(void) {
+  return true;
+}
+
 bool activity_get_metric(ActivityMetric metric, uint32_t history_len, int32_t *history) {
   memcpy(history, &s_data.metric_history[metric], history_len * sizeof(int32_t));
   return true;
