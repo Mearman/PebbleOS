@@ -13,6 +13,7 @@
 #include "clar.h"
 
 // Stubs
+#include "stubs_ambient_light.h"
 #include "stubs_analytics.h"
 #include "stubs_app_install_manager.h"
 #include "stubs_app_state.h"
