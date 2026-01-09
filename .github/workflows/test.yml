@@ -43,12 +43,12 @@ jobs:
       matrix:
         include:
           # Docker Linux (original)
-          - name: docker-linux
+          - name: docker
             runs-on: ubuntu-24.04
             container: ghcr.io/pebble-dev/pebbleos-docker:v1
             safe_directory: ${{ github.workspace }}
           # Native Linux
-          - name: native-linux
+          - name: linux
             runs-on: ubuntu-24.04
             safe_directory: ${{ github.workspace }}
           # macOS
@@ -62,7 +62,7 @@ jobs:
     steps:
       - name: Mark Github workspace as safe
         run: |
-          if [ "${{ matrix.name }}" = "native-linux" ]; then
+          if [ "${{ matrix.name }}" = "linux" ]; then
             sudo git config --system --add safe.directory "${{ matrix.safe_directory }}"
           else
             git config --system --add safe.directory "${{ matrix.safe_directory }}"
@@ -76,7 +76,7 @@ jobs:
 
       # Native Linux: Install ARM toolchain and dependencies
       - name: Install dependencies (native Linux)
-        if: matrix.name == 'native-linux'
+        if: matrix.name == 'linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc-arm-none-eabi ninja-build gettext gcc-multilib g++-multilib libc6-dev-i386
@@ -95,7 +95,7 @@ jobs:
 
       # Docker: Already has dependencies, just update pip
       - name: Install Python dependencies (Docker)
-        if: matrix.name == 'docker-linux'
+        if: matrix.name == 'docker'
         run: |
           pip install -U pip
           pip install -r requirements.txt
