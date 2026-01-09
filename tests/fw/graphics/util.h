@@ -315,13 +315,15 @@ bool gbitmap_eq(GBitmap *actual_bmp, GBitmap *expected_bmp, const char *filename
 
     // Expected bitmap from PBI may have row_size_bytes=0 (circular format marker).
     // In this case, pixel data is stored as rectangular (full width per row).
+    // Calculate stride FIRST, then use it for row pointer calculation.
+    const uint16_t expected_stride = (expected_bmp->row_size_bytes == 0) ?
+        expected_bmp->bounds.size.w : expected_bmp->row_size_bytes;
+
     const GBitmapDataRowInfo expected_row_info = {
-      .data = expected_bmp_data + (y * expected_bmp->bounds.size.w),
+      .data = expected_bmp_data + (y * expected_stride),
       .min_x = 0,
       .max_x = expected_bmp->bounds.size.w - 1
     };
-    const uint16_t expected_stride = (expected_bmp->row_size_bytes == 0) ?
-        expected_bmp->bounds.size.w : expected_bmp->row_size_bytes;
 
     for (int x = start_x; x < end_x; ++x) {
       uint8_t *actual_bmp_data = dest_row_info.data;
