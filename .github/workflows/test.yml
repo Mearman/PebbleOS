@@ -86,7 +86,7 @@ jobs:
       - name: Install dependencies (macOS)
         if: matrix.platform.name == 'macos'
         run: |
-          brew install gcc-arm-embedded ninja
+          brew install gcc-arm-embedded ninja llvm
           python3 -m venv .venv
           source .venv/bin/activate
           pip install -U pip
@@ -102,6 +102,7 @@ jobs:
       - name: Configure
         run: |
           if [ "${{ matrix.platform.name }}" = "macos" ]; then
+            export DYLD_LIBRARY_PATH=/opt/homebrew/opt/llvm/lib:$DYLD_LIBRARY_PATH
             source .venv/bin/activate
             ./waf configure --board ${{ matrix.board }} --js-engine=none --relax_toolchain_restrictions
           else
@@ -111,6 +112,7 @@ jobs:
       - name: Run tests
         run: |
           if [ "${{ matrix.platform.name }}" = "macos" ]; then
+            export DYLD_LIBRARY_PATH=/opt/homebrew/opt/llvm/lib:$DYLD_LIBRARY_PATH
             source .venv/bin/activate
           fi
           ./waf test --continue_on_test_failure
