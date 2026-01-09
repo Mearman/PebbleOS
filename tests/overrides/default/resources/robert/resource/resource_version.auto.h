@@ -9,6 +9,6 @@
 //
 
 static const ResourceVersion SYSTEM_RESOURCE_VERSION = {
-  .crc = 1205113667,
+  .crc = 1048170237,  // 0x3e79cefd - content CRC  // 0x9314f552 - patched with timezone DB  // 0x51362c19 - patched with snowy fonts
   .timestamp = 0
 };
