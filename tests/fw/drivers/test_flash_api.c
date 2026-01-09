@@ -4,6 +4,7 @@
 #include "clar.h"
 #include "fake_new_timer.h"
 #include "stubs_analytics.h"
+#include "stubs_flash_impl.h"
 #include "stubs_freertos.h"
 #include "stubs_logging.h"
 #include "stubs_mutex.h"
@@ -151,27 +152,6 @@ status_t flash_impl_clear_nvram_erase_status(void) {
 status_t flash_impl_get_nvram_erase_status(bool *is_subsector,
                                            FlashAddress *addr) {
   return S_FALSE;
-}
-
-// Security register function stubs
-status_t flash_impl_read_security_register(uint32_t addr, uint8_t *val) {
-  return E_ERROR;
-}
-
-status_t flash_impl_security_register_is_locked(uint32_t address, bool *locked) {
-  return E_ERROR;
-}
-
-status_t flash_impl_erase_security_register(uint32_t addr) {
-  return E_ERROR;
-}
-
-status_t flash_impl_write_security_register(uint32_t addr, uint8_t val) {
-  return E_ERROR;
-}
-
-const FlashSecurityRegisters *flash_impl_security_registers_info(void) {
-  return NULL;
 }
 
 void flash_erase_init(void) {
