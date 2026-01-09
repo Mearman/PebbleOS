@@ -38,54 +38,33 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          # snowy_bb2 - Pebble Time (baseline)
+        board:
+          - snowy_bb2   # Pebble Time (BASALT baseline)
+          - spalding_bb2 # Pebble Time Round (CHALK round form factor)
+          - silk_bb2    # Pebble 2 (DIORITE with HRM)
+          - asterix     # Pebble 2 Duo (FLINT with nRF52840)
+        platform:
           - name: docker
-            board: snowy_bb2
             runs-on: ubuntu-24.04
             container: ghcr.io/pebble-dev/pebbleos-docker:v1
             safe_directory: ${{ github.workspace }}
           - name: linux
-            board: snowy_bb2
             runs-on: ubuntu-24.04
             safe_directory: ${{ github.workspace }}
           - name: macos
-            board: snowy_bb2
             runs-on: macos-14
             safe_directory: /Users/runner/work/PebbleOS/PebbleOS
-          # spalding_bb2 - Pebble Time Round (CHALK round form factor)
-          - name: docker
-            board: spalding_bb2
-            runs-on: ubuntu-24.04
-            container: ghcr.io/pebble-dev/pebbleos-docker:v1
-            safe_directory: ${{ github.workspace }}
-          - name: linux
-            board: spalding_bb2
-            runs-on: ubuntu-24.04
-            safe_directory: ${{ github.workspace }}
-          # silk_bb2 - Pebble 2 (DIORITE with HRM)
-          - name: docker
-            board: silk_bb2
-            runs-on: ubuntu-24.04
-            container: ghcr.io/pebble-dev/pebbleos-docker:v1
-            safe_directory: ${{ github.workspace }}
-          # asterix - Pebble 2 Duo (FLINT with nRF52840)
-          - name: docker
-            board: asterix
-            runs-on: ubuntu-24.04
-            container: ghcr.io/pebble-dev/pebbleos-docker:v1
-            safe_directory: ${{ github.workspace }}
 
-    name: test ${{ matrix.board }} ${{ matrix.name }}
-    runs-on: ${{ matrix.runs-on }}
-    container: ${{ matrix.container }}
+    name: test ${{ matrix.board }} ${{ matrix.platform.name }}
+    runs-on: ${{ matrix.platform.runs-on }}
+    container: ${{ matrix.platform.container }}
     steps:
       - name: Mark Github workspace as safe
         run: |
-          if [ "${{ matrix.name }}" = "linux" ]; then
-            sudo git config --system --add safe.directory "${{ matrix.safe_directory }}"
+          if [ "${{ matrix.platform.name }}" = "linux" ]; then
+            sudo git config --system --add safe.directory "${{ matrix.platform.safe_directory }}"
           else
-            git config --system --add safe.directory "${{ matrix.safe_directory }}"
+            git config --system --add safe.directory "${{ matrix.platform.safe_directory }}"
           fi
 
       - name: Checkout
@@ -96,7 +75,7 @@ jobs:
 
       # Native Linux: Install ARM toolchain and dependencies
       - name: Install dependencies (native Linux)
-        if: matrix.name == 'linux'
+        if: matrix.platform.name == 'linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc-arm-none-eabi ninja-build gettext gcc-multilib g++-multilib libc6-dev-i386
@@ -105,7 +84,7 @@ jobs:
 
       # macOS: Install ARM toolchain and dependencies
       - name: Install dependencies (macOS)
-        if: matrix.name == 'macos'
+        if: matrix.platform.name == 'macos'
         run: |
           brew install gcc-arm-embedded ninja
           python3 -m venv .venv
@@ -115,14 +94,14 @@ jobs:
 
       # Docker: Already has dependencies, just update pip
       - name: Install Python dependencies (Docker)
-        if: matrix.name == 'docker'
+        if: matrix.platform.name == 'docker'
         run: |
           pip install -U pip
           pip install -r requirements.txt
 
       - name: Configure
         run: |
-          if [ "${{ matrix.name }}" = "macos" ]; then
+          if [ "${{ matrix.platform.name }}" = "macos" ]; then
             source .venv/bin/activate
             ./waf configure --board ${{ matrix.board }} --js-engine=none --relax_toolchain_restrictions
           else
@@ -131,7 +110,7 @@ jobs:
 
       - name: Run tests
         run: |
-          if [ "${{ matrix.name }}" = "macos" ]; then
+          if [ "${{ matrix.platform.name }}" = "macos" ]; then
             source .venv/bin/activate
           fi
           ./waf test --continue_on_test_failure
@@ -146,5 +125,5 @@ jobs:
         uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: failed_diff_images-${{ matrix.name }}
+          name: failed_diff_images-${{ matrix.platform.name }}
           path: build/test/tests/failed/*-diff.png
