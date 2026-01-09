@@ -30,9 +30,6 @@ on:
       - 'wscript'
   workflow_dispatch:
 
-env:
-  TEST_BOARD: 'snowy_bb2'
-
 jobs:
   test:
     if: |
@@ -42,21 +39,44 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Docker Linux (original)
+          # snowy_bb2 - Pebble Time (baseline)
           - name: docker
+            board: snowy_bb2
             runs-on: ubuntu-24.04
             container: ghcr.io/pebble-dev/pebbleos-docker:v1
             safe_directory: ${{ github.workspace }}
-          # Native Linux
           - name: linux
+            board: snowy_bb2
             runs-on: ubuntu-24.04
             safe_directory: ${{ github.workspace }}
-          # macOS
           - name: macos
+            board: snowy_bb2
             runs-on: macos-14
             safe_directory: /Users/runner/work/PebbleOS/PebbleOS
+          # spalding_bb2 - Pebble Time Round (CHALK round form factor)
+          - name: docker
+            board: spalding_bb2
+            runs-on: ubuntu-24.04
+            container: ghcr.io/pebble-dev/pebbleos-docker:v1
+            safe_directory: ${{ github.workspace }}
+          - name: linux
+            board: spalding_bb2
+            runs-on: ubuntu-24.04
+            safe_directory: ${{ github.workspace }}
+          # silk_bb2 - Pebble 2 (DIORITE with HRM)
+          - name: docker
+            board: silk_bb2
+            runs-on: ubuntu-24.04
+            container: ghcr.io/pebble-dev/pebbleos-docker:v1
+            safe_directory: ${{ github.workspace }}
+          # asterix - Pebble 2 Duo (FLINT with nRF52840)
+          - name: docker
+            board: asterix
+            runs-on: ubuntu-24.04
+            container: ghcr.io/pebble-dev/pebbleos-docker:v1
+            safe_directory: ${{ github.workspace }}
 
-    name: test ${{ matrix.name }}
+    name: test ${{ matrix.board }} ${{ matrix.name }}
     runs-on: ${{ matrix.runs-on }}
     container: ${{ matrix.container }}
     steps:
@@ -104,9 +124,9 @@ jobs:
         run: |
           if [ "${{ matrix.name }}" = "macos" ]; then
             source .venv/bin/activate
-            ./waf configure --board ${{env.TEST_BOARD}} --js-engine=none --relax_toolchain_restrictions
+            ./waf configure --board ${{ matrix.board }} --js-engine=none --relax_toolchain_restrictions
           else
-            ./waf configure --board ${{env.TEST_BOARD}} --js-engine=none
+            ./waf configure --board ${{ matrix.board }} --js-engine=none
           fi
 
       - name: Run tests
