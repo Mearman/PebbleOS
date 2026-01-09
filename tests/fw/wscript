@@ -134,8 +134,7 @@ def build(ctx):
          " src/fw/services/common/battery/battery_monitor.c " \
          " src/fw/services/common/regular_timer.c " \
          " tests/fakes/fake_battery.c " \
-         " tests/fakes/fake_rtc.c " \
-         " tests/stubs/stubs_mutex.c ",
+         " tests/fakes/fake_rtc.c ",
          test_sources_ant_glob = "test_battery_monitor.c",
          defines=['PLATFORM_SNOWY'],
          override_includes=['dummy_board'],
