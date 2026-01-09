@@ -65,3 +65,6 @@ docs/_build
 artifacts/
 
 .claude
+tests/test_images/*.pbi
+tests/test_images/*.1bit.png
+tests/test_images/*.8bit.png
