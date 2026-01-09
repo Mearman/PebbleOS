@@ -63,7 +63,7 @@ int battery_charge_status_get(BatteryChargeStatus *status) {
   if (!status) {
     return -1;
   }
-  *status = s_charging ? BatteryChargeStatusCharging : BatteryChargeStatusDischarging;
+  *status = s_charging ? BatteryChargeStatusCC : BatteryChargeStatusUnknown;
   return 0;
 }
 
