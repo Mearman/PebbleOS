@@ -13,7 +13,8 @@ import clang
 
 def extract_exported_functions(node, functions=[], types=[], defines=[]):
     def update_matching_export(exports, node):
-        spelling = parse_c_decl.get_node_spelling(node)
+        # Use node.spelling instead of get_node_spelling() to properly convert CXString to Python str
+        spelling = str(node.spelling) if node.spelling else ""
         for e in exports:
             impl_name = e.impl_name if hasattr(e, 'impl_name') else ""
 

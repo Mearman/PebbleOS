@@ -1,7 +1,6 @@
 /* SPDX-FileCopyrightText: 2024 Google LLC */
 /* SPDX-License-Identifier: Apache-2.0 */
 
-
 #pragma once
 
 //
@@ -10,6 +9,6 @@
 //
 
 static const ResourceVersion SYSTEM_RESOURCE_VERSION = {
-  .crc = 2259022077,
+  .crc = 711638740,  // 0x2a6abed4 - content CRC  // 0x6188f059 - patched with timezone DB
   .timestamp = 0
 };

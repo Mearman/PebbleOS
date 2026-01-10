@@ -55,7 +55,7 @@ def convert_png_to_pbi(task):
     dest_pbi = task.outputs[0].srcpath()
     bitdepth = None
 
-    if any(word in dest_pbi for word in ['.8bit.', '~snowy', '~spalding', '~cutts', '~robert']):
+    if any(word in dest_pbi for word in ['.8bit.', '~snowy', '~spalding', '~silk', '~cutts', '~robert']):
         img_fmt = 'color_raw'
     elif any(word in dest_pbi for word in ['.1bit.', '~tintin']):
         img_fmt = 'bw'
@@ -83,7 +83,7 @@ def convert_png_to_pblpng(task):
 
         if bit_suffix:
             bitdepth = int(bit_suffix.group(1))
-        elif any(word in dest_png for word in ['~snowy', '~spalding', '~cutts', '~robert']):
+        elif any(word in dest_png for word in ['~snowy', '~spalding', '~silk', '~cutts', '~robert']):
             bitdepth = 8
         elif any(word in dest_png for word in ['~tintin']):
             bitdepth = 1
@@ -279,6 +279,11 @@ def build(bld):
     # clang on Linux errors on true == true or false == false compile-time assertions
     bld.env.CFLAGS.append('-Wno-tautological-compare')
 
+    # Disable DUMA on macOS ARM - it requires configuration that's not set up
+    import platform
+    if platform.system() == 'Darwin' and platform.processor() == 'arm':
+      bld.env.append_value('DEFINES', 'DUMA_DISABLED')
+
     # Any test in this list won't be compiled
     bld.env.BROKEN_TESTS = [
         'test_app_fetch_endpoint.c',
@@ -323,7 +328,10 @@ def build(bld):
 
     # Set up the fail directory, and make it. This is used to output data from the tests for
     # comparison with the expected results.
-    fail_dir = test_images_dest_dir.parent.make_node('failed')
+    # Create platform-specific failure directory to prevent cross-platform test contamination
+    platform = bld.env.get_flat('PLATFORM_NAME') if 'PLATFORM_NAME' in bld.env else 'unknown'
+    fail_dir_name = f'failed_{platform}'
+    fail_dir = test_images_dest_dir.parent.make_node(fail_dir_name)
     fail_path = fail_dir.abspath().strip()
     sh.rm('-rf', fail_path)
     fail_dir.mkdir()

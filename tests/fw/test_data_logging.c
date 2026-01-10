@@ -110,7 +110,7 @@ static void prv_transport_sent_data_cb(uint16_t endpoint_id,
 static void prv_init_fake_flash(void) {
   fake_spi_flash_init(0, 0x1000000);
   pfs_init(false);
-  pfs_format(false /* write erase headers */);
+  pfs_format(true /* write erase headers */);
 
   PBL_LOG(LOG_LEVEL_INFO, "\nFile system size: %d, avail: %d", (int)pfs_get_size(),
           (int)get_available_pfs_space());

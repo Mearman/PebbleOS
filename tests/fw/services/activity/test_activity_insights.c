@@ -13,6 +13,7 @@
 #include "clar.h"
 
 // Stubs
+#include "stubs_ambient_light.h"
 #include "stubs_analytics.h"
 #include "stubs_app_install_manager.h"
 #include "stubs_app_state.h"
@@ -74,6 +75,10 @@ bool activity_prefs_activity_insights_are_enabled(void) {
 }
 
 bool activity_prefs_sleep_insights_are_enabled(void) {
+  return true;
+}
+
+bool activity_is_initialized(void) {
   return true;
 }
 
