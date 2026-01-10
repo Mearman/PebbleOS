@@ -195,6 +195,11 @@ def build_product_source_files(bld, test_dir, include_paths, defines, cflags, pr
     h.update(Utils.h_list(include_paths))
     h.update(Utils.h_list(sorted(defines)))
     h.update(Utils.h_list(sorted(cflags)))
+    # Add platform name and color depth to cache hash to prevent cross-platform contamination
+    if 'PLATFORM_NAME' in bld.env:
+        h.update(bld.env['PLATFORM_NAME'].encode('utf-8'))
+    if 'SCREEN_COLOR_DEPTH_BITS' in bld.env:
+        h.update(bld.env['SCREEN_COLOR_DEPTH_BITS'].encode('utf-8'))
     compile_args_hash_str = h.hexdigest()
 
     if not hasattr(bld, 'utest_product_sources'):
