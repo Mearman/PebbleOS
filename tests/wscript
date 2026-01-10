@@ -328,7 +328,10 @@ def build(bld):
 
     # Set up the fail directory, and make it. This is used to output data from the tests for
     # comparison with the expected results.
-    fail_dir = test_images_dest_dir.parent.make_node('failed')
+    # Create platform-specific failure directory to prevent cross-platform test contamination
+    platform = bld.env.get_flat('PLATFORM_NAME') if 'PLATFORM_NAME' in bld.env else 'unknown'
+    fail_dir_name = f'failed_{platform}'
+    fail_dir = test_images_dest_dir.parent.make_node(fail_dir_name)
     fail_path = fail_dir.abspath().strip()
     sh.rm('-rf', fail_path)
     fail_dir.mkdir()
