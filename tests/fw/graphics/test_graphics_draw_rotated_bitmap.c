@@ -33,6 +33,12 @@
 // Fakes
 #include "fake_gbitmap_get_data_row.h"
 
+// Reset fake state at the start of each test to prevent cross-test contamination
+#define RESET_FAKE_STATE() do { \
+  s_fake_data_row_handling = false; \
+  s_fake_data_row_handling_disable_vertical_flip = false; \
+} while(0)
+
 // Setup
 ////////////////////////////////////
 static GBitmap *test_image_bw;
@@ -94,6 +100,7 @@ static void setup_test_rotate_bitmap(GContext *ctx, FrameBuffer *fb,
 // Tests
 ////////////////////////////////////
 void test_graphics_draw_rotated_bitmap__get_color(void) {
+  RESET_FAKE_STATE();
 #if SCREEN_COLOR_DEPTH_BITS == 1
   cl_check(get_bitmap_bit(test_image_bw, 8, 16) == 1);
   cl_check(get_bitmap_bit(test_image_bw, 8, 24) == 0);
@@ -111,6 +118,7 @@ void test_graphics_draw_rotated_bitmap__get_color(void) {
 
 
 void test_graphics_draw_rotated_bitmap__origin_bw_assign(void) {
+  RESET_FAKE_STATE();
   GContext ctx;
   test_graphics_context_init(&ctx, fb);
 
@@ -137,6 +145,7 @@ void test_graphics_draw_rotated_bitmap__origin_bw_assign(void) {
 }
 
 void test_graphics_draw_rotated_bitmap__origin_bw_set(void) {
+  RESET_FAKE_STATE();
   GContext ctx;
   test_graphics_context_init(&ctx, fb);
 
@@ -162,6 +171,7 @@ void test_graphics_draw_rotated_bitmap__origin_bw_set(void) {
 }
 
 void test_graphics_draw_rotated_bitmap__offset_bw(void) {
+  RESET_FAKE_STATE();
   GContext ctx;
   test_graphics_context_init(&ctx, fb);
 
@@ -185,6 +195,7 @@ void test_graphics_draw_rotated_bitmap__offset_bw(void) {
 }
 
 void test_graphics_draw_rotated_bitmap__origin_color_assign(void) {
+  RESET_FAKE_STATE();
   GContext ctx;
   test_graphics_context_init(&ctx, fb);
 
@@ -220,6 +231,7 @@ void test_graphics_draw_rotated_bitmap__origin_color_assign(void) {
 }
 
 void test_graphics_draw_rotated_bitmap__origin_color_set(void) {
+  RESET_FAKE_STATE();
   GContext ctx;
   test_graphics_context_init(&ctx, fb);
 
@@ -254,6 +266,7 @@ void test_graphics_draw_rotated_bitmap__origin_color_set(void) {
 }
 
 void test_graphics_draw_rotated_bitmap__offset_color(void) {
+  RESET_FAKE_STATE();
   GContext ctx;
   test_graphics_context_init(&ctx, fb);
 
@@ -277,6 +290,7 @@ void test_graphics_draw_rotated_bitmap__offset_color(void) {
 }
 
 void test_graphics_draw_rotated_bitmap__offset_edge(void) {
+  RESET_FAKE_STATE();
   GContext ctx;
   test_graphics_context_init(&ctx, fb);
 
@@ -306,6 +320,7 @@ void test_graphics_draw_rotated_bitmap__offset_edge(void) {
 }
 
 void test_graphics_draw_rotated_bitmap__data_row_handling(void) {
+  RESET_FAKE_STATE();
   // Enable fake data row handling which will override the gbitmap_get_data_row_xxx() functions
   // with their fake counterparts in fake_gbitmap_get_data_row.c
   s_fake_data_row_handling = true;
