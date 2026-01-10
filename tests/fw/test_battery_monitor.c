@@ -4,6 +4,7 @@
 #include "services/common/battery/battery_monitor.h"
 #include "services/common/battery/battery_state.h"
 #include "services/common/battery/battery_curve.h"
+#include "services/common/regular_timer.h"
 
 #include "clar.h"
 
@@ -122,9 +123,14 @@ void test_battery_monitor__initialize(void) {
   s_stop_mode_allowed = true;
   fake_rtc_init(0, 0);
   fake_rtc_auto_increment_ticks(0);
+
+  // Initialize regular timer service (required by battery_monitor_init)
+  regular_timer_init();
 }
 
 void test_battery_monitor__cleanup(void) {
+  // Clean up regular timer service
+  regular_timer_deinit();
 }
 
 // Tests
