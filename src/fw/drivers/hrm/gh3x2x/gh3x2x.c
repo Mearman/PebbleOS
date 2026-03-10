@@ -107,123 +107,66 @@ void gh3x2x_print_fmt(const char *fmt, ...) {
 #endif
 }
 
-void gh3x2x_result_report(uint8_t type, uint32_t val, uint8_t quality) {
-  if (type == 1) {
-    HRMData hrm_data = {0};
+void gh3x2x_hr_result_report(uint8_t bpm, uint8_t quality) {
+  HRMData hrm_data = {0};
 
-    PBL_LOG_DBG("GH3X2X BPM %" PRIu32 " (quality=%" PRIu8 ")", val, quality);
+  PBL_LOG_DBG("GH3X2X BPM %" PRIu8 " (quality=%" PRIu8 ", wear=%u)", bpm, quality, HRM->state->is_wear);
 
-    hrm_data.features = HRMFeature_BPM;
-    hrm_data.hrm_bpm = val & 0xff;
+  hrm_data.features = HRMFeature_BPM;
 
-    if (quality == 254U) {
-      hrm_data.hrm_quality = HRMQuality_OffWrist;
-    } else if (quality >= 80U) {
-      hrm_data.hrm_quality = HRMQuality_Excellent;
-    } else if (quality >= 70U) {
-      hrm_data.hrm_quality = HRMQuality_Good;
-    } else if (quality >= 60U) {
-      hrm_data.hrm_quality = HRMQuality_Acceptable;
-    } else if (quality >= 50U) {
-      hrm_data.hrm_quality = HRMQuality_Poor;
-    } else if (quality >= 30U) {
-      hrm_data.hrm_quality = HRMQuality_Worst;
-    } else {
-      hrm_data.hrm_quality = HRMQuality_NoSignal;
-    }
-
-    hrm_manager_new_data_cb(&hrm_data);
-  } else if (type == 2) {
-    HRMData hrm_data = {0};
-
-    PBL_LOG_DBG("GH3X2X SpO2 %" PRIu32 " (quality=%" PRIu8 ")", val, quality);
-
-    hrm_data.features = HRMFeature_SpO2;
-    hrm_data.spo2_percent = val & 0xff;
-
-    // FIXME(GH3X2X): This mapping is wrong, we need to understand the actual quality values
-    if (quality == 254U) {
-      hrm_data.spo2_quality = HRMQuality_OffWrist;
-    } else if (quality >= 80U) {
-      hrm_data.spo2_quality = HRMQuality_Excellent;
-    } else if (quality >= 70U) {
-      hrm_data.spo2_quality = HRMQuality_Good;
-    } else if (quality >= 60U) {
-      hrm_data.spo2_quality = HRMQuality_Acceptable;
-    } else if (quality >= 50U) {
-      hrm_data.spo2_quality = HRMQuality_Poor;
-    } else if (quality >= 30U) {
-      hrm_data.spo2_quality = HRMQuality_Worst;
-    } else {
-      hrm_data.spo2_quality = HRMQuality_NoSignal;
-    }
-
-    hrm_manager_new_data_cb(&hrm_data);
+  if (!HRM->state->is_wear) {
+    hrm_data.hrm_quality = HRMQuality_OffWrist;
   } else {
-    PBL_LOG_WRN("GH3X2X unexpected report type (%" PRIu8 ")", type);
-  }
-}
+    hrm_data.hrm_bpm = bpm;
 
-void gh3x2x_timer_init(uint32_t period_ms) {
-  if (HRM) {
-    HRM->state->timer_period_ms = period_ms;
-  }
-}
-
-static void gh3x2x_timer_callback(void* data) {
-  uint32_t param = (uint32_t)data;
-  if (param != 0x87965421) {
-    // Coalesce repeated timer firings - only queue one callback at a time
-    if (s_hrm_timer_flag == false) {
-      if (system_task_add_callback(gh3x2x_timer_callback, (void*)0x87965421)) {
-        s_hrm_timer_flag = true;
-      }
+    if (quality >= 98U) {
+      hrm_data.hrm_quality = HRMQuality_Excellent;
+    } else if (quality >= 90U) {
+      hrm_data.hrm_quality = HRMQuality_Good;
+    } else if (quality >= 80U) {
+      hrm_data.hrm_quality = HRMQuality_Acceptable;
+    } else if (quality >= 70U) {
+      hrm_data.hrm_quality = HRMQuality_Poor;
+    } else {
+      hrm_data.hrm_quality = HRMQuality_Worst;
     }
-    return;
   }
-  s_hrm_timer_flag = false;
-  Gh3x2xSerialSendTimerHandle();
+
+  hrm_manager_new_data_cb(&hrm_data);
 }
 
-static void gh3x2x_timer_start_handle(void* arg) {
-  if (HRM == NULL || HRM->state->timer != NULL) {
-    return;
-  }
-  if (HRM->state->timer_period_ms == 0) {
-    return;
-  }
-  HRM->state->timer = app_timer_register_repeatable(HRM->state->timer_period_ms, gh3x2x_timer_callback, NULL, true);
-}
+void gh3x2x_spo2_result_report(uint8_t pct, uint8_t quality) {
+  HRMData hrm_data = {0};
 
-static void gh3x2x_timer_stop_handle(void* arg) {
-  if (HRM && HRM->state->timer) {
-    app_timer_cancel(HRM->state->timer);
-    HRM->state->timer = NULL;
+  PBL_LOG_DBG("GH3X2X SpO2 %" PRIu8 " (quality=%" PRIu8 ", wear=%u)", pct, quality, HRM->state->is_wear);
+
+  hrm_data.features = HRMFeature_SpO2;
+
+  if (!HRM->state->is_wear) {
+    hrm_data.spo2_quality = HRMQuality_OffWrist;
+  } else {
+    hrm_data.spo2_percent = pct;
+
+    if (quality >= 98U) {
+      hrm_data.spo2_quality = HRMQuality_Excellent;
+    } else if (quality >= 90U) {
+      hrm_data.spo2_quality = HRMQuality_Good;
+    } else if (quality >= 80U) {
+      hrm_data.spo2_quality = HRMQuality_Acceptable;
+    } else if (quality >= 70U) {
+      hrm_data.spo2_quality = HRMQuality_Poor;
+    } else {
+      hrm_data.spo2_quality = HRMQuality_Worst;
+    }
   }
-}
 
-void gh3x2x_timer_start(void) { 
-  PebbleEvent e = {
-    .type = PEBBLE_CALLBACK_EVENT,
-    .callback.callback = gh3x2x_timer_start_handle,
-  };
-  event_put(&e);
-}
-
-void gh3x2x_timer_stop(void) { 
-  PebbleEvent e = {
-    .type = PEBBLE_CALLBACK_EVENT,
-    .callback.callback = gh3x2x_timer_stop_handle,
-  };
-  event_put(&e);
+  hrm_manager_new_data_cb(&hrm_data);
 }
 
 void gh3x2x_wear_evt_notify(bool is_wear) {
-  HRMDevice* p_dev = HRM;
-  if (p_dev) {
-    p_dev->state->is_wear = is_wear;
-  }
-  PBL_LOG_DBG("wear notify: %d", is_wear);
+  PBL_LOG_DBG("GH3X2X wear state: %d", is_wear);
+
+  HRM->state->is_wear = is_wear;
 }
 
 // GH3X2X calibration/factory testing
@@ -311,6 +254,60 @@ void gh3x2x_rawdata_notify(uint32_t *p_rawdata, uint32_t data_count) {
 }
 
 #ifdef MANUFACTURING_FW
+void gh3x2x_timer_init(uint32_t period_ms) {
+  if (HRM) {
+    HRM->state->timer_period_ms = period_ms;
+  }
+}
+
+static void gh3x2x_timer_callback(void* data) {
+  uint32_t param = (uint32_t)data;
+  if (param != 0x87965421) {
+    // Coalesce repeated timer firings - only queue one callback at a time
+    if (s_hrm_timer_flag == false) {
+      if (system_task_add_callback(gh3x2x_timer_callback, (void*)0x87965421)) {
+        s_hrm_timer_flag = true;
+      }
+    }
+    return;
+  }
+  s_hrm_timer_flag = false;
+  Gh3x2xSerialSendTimerHandle();
+}
+
+static void gh3x2x_timer_start_handle(void* arg) {
+  if (HRM == NULL || HRM->state->timer != NULL) {
+    return;
+  }
+  if (HRM->state->timer_period_ms == 0) {
+    return;
+  }
+  HRM->state->timer = app_timer_register_repeatable(HRM->state->timer_period_ms, gh3x2x_timer_callback, NULL, true);
+}
+
+static void gh3x2x_timer_stop_handle(void* arg) {
+  if (HRM && HRM->state->timer) {
+    app_timer_cancel(HRM->state->timer);
+    HRM->state->timer = NULL;
+  }
+}
+
+void gh3x2x_timer_start(void) {
+  PebbleEvent e = {
+    .type = PEBBLE_CALLBACK_EVENT,
+    .callback.callback = gh3x2x_timer_start_handle,
+  };
+  event_put(&e);
+}
+
+void gh3x2x_timer_stop(void) {
+  PebbleEvent e = {
+    .type = PEBBLE_CALLBACK_EVENT,
+    .callback.callback = gh3x2x_timer_stop_handle,
+  };
+  event_put(&e);
+}
+
 void gh3x2x_factory_test_enable(HRMDevice *dev, GH3x2xFTType test_type) {
   uint32_t mode = 0;
   if (test_type == HRM_FACTORY_TEST_CTR) {                    // CTR
@@ -423,6 +420,9 @@ void gh3x2x_set_work_mode(int32_t mode) {
   //always enable soft adt
   state->work_mode = mode | GH3X2X_FUNCTION_SOFT_ADT_IR;
 }
+#else
+void gh3x2x_timer_init(uint32_t period_ms) {}
+void gh3x2x_timer_start(void) {}
 #endif // MANUFACTURING_FW
 
 #else
@@ -447,6 +447,7 @@ void hrm_init(HRMDevice *dev) {
   gpio_input_init_pull_up_down(&dev->int_input, GPIO_PuPd_DOWN);
 #endif
 
+  dev->state->is_wear = false;
   dev->state->initialized = true;
 }
 
@@ -458,9 +459,9 @@ bool hrm_enable(HRMDevice *dev) {
 
   s_hrm_int_flag = false;
 
-  dev->state->work_mode = GH3X2X_FUNCTION_HR | GH3X2X_FUNCTION_SPO2;
+  dev->state->work_mode = GH3X2X_FUNCTION_HR | GH3X2X_FUNCTION_SOFT_ADT_GREEN;
 #ifdef MANUFACTURING_FW
-  dev->state->work_mode |= GH3X2X_FUNCTION_SOFT_ADT_IR;
+  dev->state->work_mode = GH3X2X_FUNCTION_HR | GH3X2X_FUNCTION_SPO2 | GH3X2X_FUNCTION_SOFT_ADT_IR;
 #endif
 
   GH3X2X_FifoWatermarkThrConfig(GH3X2X_FIFO_WATERMARK_CONFIG);
