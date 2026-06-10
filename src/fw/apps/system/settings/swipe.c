@@ -12,7 +12,8 @@
 #include "system/passert.h"
 
 typedef enum {
-  SwipeSettingRowVertical = 0,
+  SwipeSettingRowEnabled = 0,
+  SwipeSettingRowVertical,
   SwipeSettingRowHorizontal,
   SwipeSettingRowCount,
 } SwipeSettingRow;
@@ -45,25 +46,31 @@ static void prv_draw_row_cb(SettingsCallbacks *context, GContext *ctx, const Lay
                             uint16_t row, bool selected) {
   SettingsSwipeData *data = (SettingsSwipeData *)context;
   const char *title = NULL;
-  SwipeAxisMode mode = SwipeAxisMode_Off;
+  const char *value = NULL;
   switch (row) {
+    case SwipeSettingRowEnabled:
+      title = i18n_noop("Swipe Gestures");
+      value = shell_prefs_get_swipe_enabled() ? i18n_noop("On") : i18n_noop("Off");
+      break;
     case SwipeSettingRowVertical:
       title = i18n_noop("Vertical");
-      mode = shell_prefs_get_swipe_vertical_axis_mode();
+      value = prv_mode_label(shell_prefs_get_swipe_vertical_axis_mode());
       break;
     case SwipeSettingRowHorizontal:
       title = i18n_noop("Horizontal");
-      mode = shell_prefs_get_swipe_horizontal_axis_mode();
+      value = prv_mode_label(shell_prefs_get_swipe_horizontal_axis_mode());
       break;
     default:
       WTF;
   }
-  menu_cell_basic_draw(ctx, cell_layer, i18n_get(title, data),
-                       i18n_get(prv_mode_label(mode), data), NULL);
+  menu_cell_basic_draw(ctx, cell_layer, i18n_get(title, data), i18n_get(value, data), NULL);
 }
 
 static void prv_select_click_cb(SettingsCallbacks *context, uint16_t row) {
   switch (row) {
+    case SwipeSettingRowEnabled:
+      shell_prefs_set_swipe_enabled(!shell_prefs_get_swipe_enabled());
+      break;
     case SwipeSettingRowVertical: {
       const SwipeAxisMode next =
           (shell_prefs_get_swipe_vertical_axis_mode() + 1) % SwipeAxisModeCount;
