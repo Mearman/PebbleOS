@@ -111,6 +111,23 @@ void backlight_set_touch_wake(BacklightTouchWake wake);
 bool touch_is_globally_enabled(void);
 void touch_set_globally_enabled(bool enable);
 
+// Swipe gesture axis modes. Each axis - vertical (up/down) and horizontal
+// (left/right) - can be Off (swipes on that axis do nothing), Normal (the swipe
+// drives the button it points at) or Inverted (the swipe drives the opposite
+// button, i.e. touchscreen-style "drag the content the way you want it to go").
+typedef enum SwipeAxisMode {
+  SwipeAxisMode_Off = 0,
+  SwipeAxisMode_Normal = 1,
+  SwipeAxisMode_Inverted = 2,
+  SwipeAxisModeCount,
+} SwipeAxisMode;
+
+SwipeAxisMode shell_prefs_get_swipe_vertical_axis_mode(void);
+void shell_prefs_set_swipe_vertical_axis_mode(SwipeAxisMode mode);
+
+SwipeAxisMode shell_prefs_get_swipe_horizontal_axis_mode(void);
+void shell_prefs_set_swipe_horizontal_axis_mode(SwipeAxisMode mode);
+
 #ifdef CONFIG_DYNAMIC_BACKLIGHT
 // Dynamic backlight intensity based on ambient light sensor
 bool backlight_is_dynamic_intensity_enabled(void);

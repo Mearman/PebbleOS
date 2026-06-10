@@ -12,6 +12,7 @@
 #include "drivers/button_id.h"
 #include "kernel/events.h"
 #include "pbl/services/touch/touch_event.h"
+#include "shell/prefs.h"
 
 // Touch is only subscribed to (which powers the sensor) while an app is focused, so the sensor and
 // the gesture-wake path are unaffected when nothing is on screen.
@@ -21,18 +22,34 @@ static EventServiceInfo s_touch_event_info;
 static bool s_touch_subscribed;
 
 static ButtonId prv_button_for_direction(SwipeDirection direction) {
-  // Swipes drive the content the way a touchscreen is expected to: dragging up moves down the
-  // list/timeline (and vice versa), and the horizontal axis follows the same "drag towards what
-  // you want" feel - swipe left to select/advance, swipe right to go back.
+  // The per-axis mode is read live, so changing it in Settings takes effect immediately. Normal
+  // drives the button the swipe points at; Inverted drives the opposite, so the content moves the
+  // way a touchscreen drag expects; Off ignores that axis.
   switch (direction) {
     case SwipeDirection_Up:
-      return BUTTON_ID_DOWN;
     case SwipeDirection_Down:
-      return BUTTON_ID_UP;
+      switch (shell_prefs_get_swipe_vertical_axis_mode()) {
+        case SwipeAxisMode_Normal:
+          return (direction == SwipeDirection_Up) ? BUTTON_ID_UP : BUTTON_ID_DOWN;
+        case SwipeAxisMode_Inverted:
+          return (direction == SwipeDirection_Up) ? BUTTON_ID_DOWN : BUTTON_ID_UP;
+        case SwipeAxisMode_Off:
+        case SwipeAxisModeCount:
+          break;
+      }
+      break;
     case SwipeDirection_Left:
-      return BUTTON_ID_SELECT;
     case SwipeDirection_Right:
-      return BUTTON_ID_BACK;
+      switch (shell_prefs_get_swipe_horizontal_axis_mode()) {
+        case SwipeAxisMode_Normal:
+          return (direction == SwipeDirection_Left) ? BUTTON_ID_BACK : BUTTON_ID_SELECT;
+        case SwipeAxisMode_Inverted:
+          return (direction == SwipeDirection_Left) ? BUTTON_ID_SELECT : BUTTON_ID_BACK;
+        case SwipeAxisMode_Off:
+        case SwipeAxisModeCount:
+          break;
+      }
+      break;
     case SwipeDirection_None:
       break;
   }
