@@ -12,7 +12,9 @@
 #include "applib/fonts/fonts.h"
 #include "applib/ui/animation_timing.h"
 #include "applib/ui/click.h"
+#include "applib/ui/recognizer/tap.h"
 #include "applib/ui/window.h"
+#include "shell/prefs_syscalls.h"
 #include "applib/pbl_std/pbl_std.h"
 #include "applib/legacy2/ui/menu_layer_legacy2.h"
 #include "kernel/pbl_malloc.h"
@@ -599,9 +601,103 @@ static void NOINLINE prv_draw_background(MenuLayer *menu_layer, GContext *ctx,
   graphics_context_set_drawing_state(ctx, prev_state);
 }
 
+#ifdef CONFIG_TOUCH
+// Iterator that finds the cell whose content-space span contains a target y. MenuIterator must be
+// first so the iterator callbacks can recover this struct from the iterator pointer.
+typedef struct {
+  MenuIterator it;
+  int16_t target_y;
+  bool found;
+  MenuIndex found_index;
+} MenuHitTestIterator;
+
+static void prv_hit_test_section_cb(MenuIterator *it) {
+  // Section headers aren't selectable; nothing to do (but the walk requires a non-NULL callback).
+}
+
+static void prv_hit_test_row_cb(MenuIterator *it) {
+  MenuHitTestIterator *hit = (MenuHitTestIterator *)it;
+  if ((hit->target_y >= it->cursor.y) && (hit->target_y < (it->cursor.y + it->cursor.h))) {
+    hit->found = true;
+    hit->found_index = it->cursor.index;
+    it->should_continue = false;
+  }
+}
+
+static bool prv_menu_index_at_content_y(MenuLayer *menu_layer, int16_t content_y,
+                                        MenuIndex *index_out) {
+  MenuHitTestIterator hit = {
+    .it = {
+      .menu_layer = menu_layer,
+      .cursor = menu_layer->cache.cursor,
+      .row_callback_after_geometry = prv_hit_test_row_cb,
+      .section_callback = prv_hit_test_section_cb,
+    },
+    .target_y = content_y,
+  };
+  // Walk from the last-rendered anchor cell down, then up, until the target cell is found.
+  prv_menu_layer_walk_downward_from_iterator(&hit.it);
+  if (!hit.found) {
+    hit.it.cursor = menu_layer->cache.cursor;
+    hit.it.should_continue = true;
+    prv_menu_layer_walk_upward_from_iterator(&hit.it);
+  }
+  if (hit.found) {
+    *index_out = hit.found_index;
+  }
+  return hit.found;
+}
+
+static void prv_menu_tap_handler(const Recognizer *recognizer, RecognizerEvent event) {
+  if (event != RecognizerEvent_Completed) {
+    return;
+  }
+  if (!sys_shell_prefs_get_swipe_tap_to_open()) {
+    return;
+  }
+  MenuLayer *menu_layer = recognizer_get_user_data(recognizer);
+  if (!menu_layer) {
+    return;
+  }
+  // The tap is in screen space; cells are drawn in the scroll layer's content sublayer, so convert
+  // the tap into that sublayer's coordinates to get the content-space y.
+  const GPoint tap_point = tap_recognizer_get_tap_point(recognizer);
+  const GPoint content_origin =
+      layer_convert_point_to_screen(&menu_layer->scroll_layer.content_sublayer, GPointZero);
+  const int16_t content_y = tap_point.y - content_origin.y;
+
+  MenuIndex index;
+  if (!prv_menu_index_at_content_y(menu_layer, content_y, &index)) {
+    return;
+  }
+  menu_layer_set_selected_index(menu_layer, index, MenuRowAlignNone, false);
+  if (menu_layer->callbacks.select_click) {
+    menu_layer->callbacks.select_click(menu_layer, &menu_layer->selection.index,
+                                       menu_layer->callback_context);
+  }
+}
+
+// Attach the tap recogniser once the menu layer is in a window (so a recogniser manager exists).
+// Called from the update proc, since that only runs while the layer is in a window being rendered.
+static void prv_menu_maybe_attach_tap_recognizer(MenuLayer *menu_layer) {
+  if (menu_layer->tap_recognizer_attached || !menu_layer->tap_recognizer) {
+    return;
+  }
+  Layer *layer = menu_layer_get_layer(menu_layer);
+  if (!layer_get_window(layer)) {
+    return;
+  }
+  layer_attach_recognizer(layer, menu_layer->tap_recognizer);
+  menu_layer->tap_recognizer_attached = true;
+}
+#endif // CONFIG_TOUCH
+
 void menu_layer_update_proc(Layer *scroll_content_layer, GContext* ctx) {
   MenuLayer *menu_layer = (MenuLayer*)(((uint8_t*)scroll_content_layer) -
       offsetof(MenuLayer, scroll_layer.content_sublayer));
+#ifdef CONFIG_TOUCH
+  prv_menu_maybe_attach_tap_recognizer(menu_layer);
+#endif
   const GSize frame_size = menu_layer->scroll_layer.layer.frame.size;
   const int16_t content_top_y = -scroll_layer_get_content_offset(&menu_layer->scroll_layer).y;
   const int16_t content_bottom_y = content_top_y + frame_size.h;
@@ -708,6 +804,11 @@ void menu_layer_init(MenuLayer *menu_layer, const GRect *frame) {
 #if PBL_ROUND
   prv_set_center_focused(menu_layer, true);
 #endif
+
+#ifdef CONFIG_TOUCH
+  menu_layer->tap_recognizer = tap_recognizer_create(prv_menu_tap_handler, menu_layer);
+  menu_layer->tap_recognizer_attached = false;
+#endif
 }
 
 MenuLayer* menu_layer_create(GRect frame) {
@@ -724,6 +825,16 @@ void menu_layer_pad_bottom_enable(MenuLayer *menu_layer, bool enable) {
 
 void menu_layer_deinit(MenuLayer *menu_layer) {
   prv_cancel_selection_animation(menu_layer);
+#ifdef CONFIG_TOUCH
+  if (menu_layer->tap_recognizer) {
+    if (menu_layer->tap_recognizer_attached) {
+      layer_detach_recognizer(menu_layer_get_layer(menu_layer), menu_layer->tap_recognizer);
+      menu_layer->tap_recognizer_attached = false;
+    }
+    recognizer_destroy(menu_layer->tap_recognizer);
+    menu_layer->tap_recognizer = NULL;
+  }
+#endif
   layer_deinit(&menu_layer->inverter.layer);
   scroll_layer_deinit(&menu_layer->scroll_layer);
 }

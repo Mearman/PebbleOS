@@ -6,6 +6,7 @@
 #include "inverter_layer.h"
 #include "menu_cell_layer.h"
 #include "scroll_layer.h"
+#include "applib/ui/recognizer/recognizer.h"
 
 #include "applib/app_timer.h"
 #include "applib/fonts/fonts.h"
@@ -423,10 +424,21 @@ typedef struct MenuLayer {
   //! If True, a vibration will occur when cursor is getting blocked at the top or bottom
   bool scroll_vibe_on_blocked:1;
 
+#ifdef CONFIG_TOUCH
+  //! Tap recogniser for tap-to-open, created in init and attached lazily once the layer has a
+  //! window. Drives selecting and opening the cell under a tap.
+  Recognizer *tap_recognizer;
+  bool tap_recognizer_attached:1;
+#endif
+
   //! Add some padding to keep track of the \ref MenuLayer size budget.
   //! As long as the size stays within this budget, 2.x apps can safely use the 3.x MenuLayer type.
   //! When padding is removed, the assertion below should also be removed.
+#ifdef CONFIG_TOUCH
+  uint8_t padding[32];
+#else
   uint8_t padding[40];
+#endif
 } MenuLayer;
 
 //! Padding used below the last item in pixels
