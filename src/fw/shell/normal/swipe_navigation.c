@@ -6,26 +6,59 @@
 #ifdef CONFIG_TOUCH
 
 #include "applib/event_service_client.h"
-#include "applib/ui/recognizer/recognizer.h"
-#include "applib/ui/recognizer/recognizer_private.h"
-#include "applib/ui/recognizer/swipe.h"
 #include "drivers/button_id.h"
 #include "kernel/events.h"
 #include "pbl/services/touch/touch_event.h"
 #include "shell/prefs.h"
 
-// Touch is subscribed for the whole life of the shell so swipes work everywhere the buttons do -
-// apps, menus, and full-screen modals like notifications (a modal unfocuses the app beneath it, so
-// focus-gating the subscription would drop touch exactly on those screens). The sensor stays
-// powered while the shell runs as a result.
-static Recognizer *s_swipe_recognizer;
-static EventServiceInfo s_touch_event_info;
+#include <stdbool.h>
+#include <stdint.h>
 
+// Finger travel before the gesture commits to a vertical or horizontal axis.
+#define AXIS_LOCK_PX 12
+// Vertical drag per injected scroll step in continuous mode.
+#define SCROLL_STEP_PX 28
+// Minimum travel for a discrete swipe (horizontal navigation, or a stepped vertical swipe).
+#define MIN_SWIPE_PX 40
+// Flick momentum: extra continuous-scroll steps scale with the finger speed at release.
+#define FLICK_GAIN 5
+#define FLICK_MAX_STEPS 12
+
+typedef enum {
+  SwipeDirection_None,
+  SwipeDirection_Up,
+  SwipeDirection_Down,
+  SwipeDirection_Left,
+  SwipeDirection_Right,
+} SwipeDirection;
+
+typedef enum {
+  SwipeAxis_None,
+  SwipeAxis_Vertical,
+  SwipeAxis_Horizontal,
+} SwipeAxis;
+
+typedef struct {
+  bool active;
+  SwipeAxis axis;
+  int16_t start_x;
+  int16_t start_y;
+  int16_t last_y;
+  int16_t scroll_anchor_y;  // last y at which a continuous scroll step was injected
+  int16_t velocity;         // EMA of vertical movement per update, for the flick on release
+} SwipeTouch;
+
+static EventServiceInfo s_touch_event_info;
+static SwipeTouch s_touch;
+
+static int16_t prv_abs16(int16_t v) {
+  return (v < 0) ? -v : v;
+}
+
+// Maps a swipe direction to the button it drives, honouring the live per-axis settings: the master
+// switch (off ignores everything), and each axis mode - Normal drives the button the swipe points
+// at, Inverted the opposite (so the content moves with the finger), Off ignores that axis.
 static ButtonId prv_button_for_direction(SwipeDirection direction) {
-  // The settings are read live, so changes in Settings take effect immediately. The master switch
-  // ignores all swipes when off; otherwise each axis mode drives the button the swipe points at
-  // (Normal), the opposite button (Inverted, so the content moves the way a touchscreen drag
-  // expects) or nothing (Off).
   if (!shell_prefs_get_swipe_enabled()) {
     return NUM_BUTTONS;
   }
@@ -60,40 +93,96 @@ static ButtonId prv_button_for_direction(SwipeDirection direction) {
   return NUM_BUTTONS;
 }
 
-static void prv_inject_button_click(ButtonId button) {
-  // Synthesize the same down/up event pair the button driver posts; a quick pair reads as a single
-  // click, driving whatever click handler the focused window has configured.
+static void prv_inject_for_direction(SwipeDirection direction) {
+  const ButtonId button = prv_button_for_direction(direction);
+  if (button >= NUM_BUTTONS) {
+    return;
+  }
+  // Synthesize the same down/up pair the button driver posts; a quick pair reads as a single click,
+  // driving whatever click handler the focused window (app, menu or modal) has configured.
   event_put(&(PebbleEvent) { .type = PEBBLE_BUTTON_DOWN_EVENT, .button.button_id = button });
   event_put(&(PebbleEvent) { .type = PEBBLE_BUTTON_UP_EVENT, .button.button_id = button });
 }
 
-static void prv_swipe_event_cb(const Recognizer *recognizer, RecognizerEvent event_type) {
-  if (event_type != RecognizerEvent_Completed) {
-    return;
-  }
-  const ButtonId button = prv_button_for_direction(swipe_recognizer_get_direction(recognizer));
-  if (button < NUM_BUTTONS) {
-    prv_inject_button_click(button);
-  }
-}
-
 static void prv_handle_touch(PebbleEvent *e, void *context) {
-  if (!s_swipe_recognizer) {
-    return;
+  const TouchEvent *te = &e->touch.event;
+  switch (te->type) {
+    case TouchEvent_Touchdown:
+      s_touch = (SwipeTouch) {
+        .active = true,
+        .axis = SwipeAxis_None,
+        .start_x = te->x,
+        .start_y = te->y,
+        .last_y = te->y,
+        .scroll_anchor_y = te->y,
+      };
+      break;
+
+    case TouchEvent_PositionUpdate: {
+      if (!s_touch.active) {
+        return;
+      }
+      const int16_t dy_frame = te->y - s_touch.last_y;
+      s_touch.velocity = (int16_t)((s_touch.velocity * 3 + dy_frame) / 4);
+      s_touch.last_y = te->y;
+
+      if (s_touch.axis == SwipeAxis_None) {
+        const int16_t adx = prv_abs16(te->x - s_touch.start_x);
+        const int16_t ady = prv_abs16(te->y - s_touch.start_y);
+        if (adx >= AXIS_LOCK_PX || ady >= AXIS_LOCK_PX) {
+          s_touch.axis = (adx > ady) ? SwipeAxis_Horizontal : SwipeAxis_Vertical;
+        }
+      }
+
+      // Continuous mode: the list follows the finger, one step per row-height of vertical travel.
+      if (s_touch.axis == SwipeAxis_Vertical && shell_prefs_get_swipe_continuous_scroll()) {
+        while (prv_abs16(te->y - s_touch.scroll_anchor_y) >= SCROLL_STEP_PX) {
+          const bool down = (te->y > s_touch.scroll_anchor_y);
+          prv_inject_for_direction(down ? SwipeDirection_Down : SwipeDirection_Up);
+          s_touch.scroll_anchor_y =
+              (int16_t)(s_touch.scroll_anchor_y + (down ? SCROLL_STEP_PX : -SCROLL_STEP_PX));
+        }
+      }
+      break;
+    }
+
+    case TouchEvent_Liftoff: {
+      if (!s_touch.active) {
+        return;
+      }
+      s_touch.active = false;
+      const int16_t dx = te->x - s_touch.start_x;
+      const int16_t dy = te->y - s_touch.start_y;
+
+      if (s_touch.axis == SwipeAxis_Horizontal) {
+        if (prv_abs16(dx) >= MIN_SWIPE_PX) {
+          prv_inject_for_direction((dx > 0) ? SwipeDirection_Right : SwipeDirection_Left);
+        }
+      } else if (s_touch.axis == SwipeAxis_Vertical) {
+        if (shell_prefs_get_swipe_continuous_scroll()) {
+          // Flick: keep scrolling a few more steps, scaled to the speed at release.
+          int16_t steps = (int16_t)(prv_abs16(s_touch.velocity) * FLICK_GAIN / SCROLL_STEP_PX);
+          if (steps > FLICK_MAX_STEPS) {
+            steps = FLICK_MAX_STEPS;
+          }
+          const SwipeDirection dir =
+              (s_touch.velocity > 0) ? SwipeDirection_Down : SwipeDirection_Up;
+          for (int16_t i = 0; i < steps; i++) {
+            prv_inject_for_direction(dir);
+          }
+        } else if (prv_abs16(dy) >= MIN_SWIPE_PX) {
+          prv_inject_for_direction((dy > 0) ? SwipeDirection_Down : SwipeDirection_Up);
+        }
+      }
+      break;
+    }
+
+    default:
+      break;
   }
-  const TouchEvent *touch_event = &e->touch.event;
-  if (touch_event->type == TouchEvent_Touchdown) {
-    // Start a fresh gesture from a known (Possible) state.
-    recognizer_reset(s_swipe_recognizer);
-  } else if (!recognizer_is_active(s_swipe_recognizer)) {
-    // No gesture in progress (e.g. subscribed mid-touch); wait for the next touchdown.
-    return;
-  }
-  recognizer_handle_touch_event(s_swipe_recognizer, touch_event);
 }
 
 void swipe_navigation_init(void) {
-  s_swipe_recognizer = swipe_recognizer_create(prv_swipe_event_cb, NULL);
   s_touch_event_info = (EventServiceInfo) {
     .type = PEBBLE_TOUCH_EVENT,
     .handler = prv_handle_touch,

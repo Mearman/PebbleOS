@@ -116,6 +116,11 @@ void touch_set_globally_enabled(bool enable);
 bool shell_prefs_get_swipe_enabled(void);
 void shell_prefs_set_swipe_enabled(bool enabled);
 
+// When on, vertical swipes scroll continuously with the finger (plus a flick throw on release)
+// instead of moving one item per swipe.
+bool shell_prefs_get_swipe_continuous_scroll(void);
+void shell_prefs_set_swipe_continuous_scroll(bool enabled);
+
 // Swipe gesture axis modes. Each axis - vertical (up/down) and horizontal
 // (left/right) - can be Off (swipes on that axis do nothing), Normal (the swipe
 // drives the button it points at) or Inverted (the swipe drives the opposite

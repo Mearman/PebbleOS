@@ -91,6 +91,9 @@ static bool s_touch_enabled = true;
 #define PREF_KEY_SWIPE_ENABLED "swipeEnabled"
 static bool s_swipe_enabled = true;
 
+#define PREF_KEY_SWIPE_SCROLL "swipeScroll"
+static bool s_swipe_continuous_scroll = true;
+
 #define PREF_KEY_SWIPE_VERTICAL "swipeVertical"
 static uint8_t s_swipe_vertical_axis_mode = SwipeAxisMode_Inverted;
 
@@ -386,6 +389,11 @@ static bool prv_set_s_touch_enabled(bool *enabled) {
 
 static bool prv_set_s_swipe_enabled(bool *enabled) {
   s_swipe_enabled = *enabled;
+  return true;
+}
+
+static bool prv_set_s_swipe_continuous_scroll(bool *enabled) {
+  s_swipe_continuous_scroll = *enabled;
   return true;
 }
 
@@ -1217,6 +1225,14 @@ bool shell_prefs_get_swipe_enabled(void) {
 
 void shell_prefs_set_swipe_enabled(bool enabled) {
   prv_pref_set(PREF_KEY_SWIPE_ENABLED, &enabled, sizeof(enabled));
+}
+
+bool shell_prefs_get_swipe_continuous_scroll(void) {
+  return s_swipe_continuous_scroll;
+}
+
+void shell_prefs_set_swipe_continuous_scroll(bool enabled) {
+  prv_pref_set(PREF_KEY_SWIPE_SCROLL, &enabled, sizeof(enabled));
 }
 
 SwipeAxisMode shell_prefs_get_swipe_vertical_axis_mode(void) {
