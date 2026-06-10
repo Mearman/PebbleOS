@@ -9,7 +9,7 @@
 #include "quick_launch.h"
 #include "quiet_time.h"
 #include "remote.h"
-#include "swipe.h"
+#include "touch.h"
 #include "system.h"
 #include "time.h"
 #include "timeline.h"
@@ -36,7 +36,7 @@ static const SettingsModuleGetMetadata s_submodule_registry[] = {
   [SettingsMenuItemDateTime]      = settings_time_get_info,
   [SettingsMenuItemDisplay]       = settings_display_get_info,
 #ifdef CONFIG_TOUCH
-  [SettingsMenuItemSwipe]         = settings_swipe_get_info,
+  [SettingsMenuItemTouch]         = settings_touch_get_info,
 #endif
 #ifdef CONFIG_THEMING
   [SettingsMenuItemThemes]        = settings_themes_get_info,

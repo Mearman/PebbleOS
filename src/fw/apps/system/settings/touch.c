@@ -1,7 +1,7 @@
 /* SPDX-FileCopyrightText: 2026 Core Devices LLC */
 /* SPDX-License-Identifier: Apache-2.0 */
 
-#include "swipe.h"
+#include "touch.h"
 #include "menu.h"
 #include "window.h"
 
@@ -86,8 +86,8 @@ static void prv_select_click_cb(SettingsCallbacks *context, uint16_t row) {
     default:
       WTF;
   }
-  settings_menu_reload_data(SettingsMenuItemSwipe);
-  settings_menu_mark_dirty(SettingsMenuItemSwipe);
+  settings_menu_reload_data(SettingsMenuItemTouch);
+  settings_menu_mark_dirty(SettingsMenuItemTouch);
 }
 
 static uint16_t prv_num_rows_cb(SettingsCallbacks *context) {
@@ -105,12 +105,12 @@ static Window *prv_init(void) {
     .num_rows = prv_num_rows_cb,
   };
 
-  return settings_window_create(SettingsMenuItemSwipe, &data->callbacks);
+  return settings_window_create(SettingsMenuItemTouch, &data->callbacks);
 }
 
-const SettingsModuleMetadata *settings_swipe_get_info(void) {
+const SettingsModuleMetadata *settings_touch_get_info(void) {
   static const SettingsModuleMetadata s_module_info = {
-    .name = i18n_noop("Swipe"),
+    .name = i18n_noop("Touch"),
     .init = prv_init,
   };
 

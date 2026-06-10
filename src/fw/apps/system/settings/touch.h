@@ -5,4 +5,4 @@
 
 #include "menu.h"
 
-const SettingsModuleMetadata *settings_swipe_get_info(void);
+const SettingsModuleMetadata *settings_touch_get_info(void);

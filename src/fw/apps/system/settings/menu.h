@@ -21,7 +21,7 @@ typedef enum {
   SettingsMenuItemDateTime,
   SettingsMenuItemDisplay,
 #ifdef CONFIG_TOUCH
-  SettingsMenuItemSwipe,
+  SettingsMenuItemTouch,
 #endif
   SettingsMenuItemHealth,
 #ifdef CONFIG_THEMING
