@@ -6,6 +6,7 @@
 #ifdef CONFIG_TOUCH
 
 #include "applib/event_service_client.h"
+#include "applib/ui/menu_cell_layer.h"
 #include "apps/system_app_ids.h"
 #include "drivers/button_id.h"
 #include "kernel/event_loop.h"
@@ -69,6 +70,14 @@ static SwipeDirection s_momentum_dir;
 
 static int16_t prv_abs16(int16_t v) {
   return (v < 0) ? -v : v;
+}
+
+// The list scrolls one row per row-height of finger travel, so the on-screen position tracks the
+// finger during a drag. This uses the live (content-size aware) menu cell height rather than a
+// tunable value - keeping the drag in sync is not a preference; only the flick momentum is.
+static int16_t prv_row_height(void) {
+  const int16_t h = menu_cell_basic_cell_height();
+  return (h < 1) ? 1 : h;
 }
 
 // Paged surfaces (the watchface and the built-in card/page apps) move a whole screen per click, so
@@ -223,10 +232,7 @@ static void prv_handle_touch(PebbleEvent *e, void *context) {
       // Skipped on paged surfaces, where a swipe is a single discrete step (handled on liftoff).
       if (s_touch.axis == SwipeAxis_Vertical && shell_prefs_get_swipe_continuous_scroll() &&
           !prv_is_paged_surface()) {
-        int16_t step = shell_prefs_get_swipe_scroll_step();
-        if (step < 1) {
-          step = 1;
-        }
+        const int16_t step = prv_row_height();
         while (prv_abs16(te->y - s_touch.scroll_anchor_y) >= step) {
           const bool down = (te->y > s_touch.scroll_anchor_y);
           prv_inject_for_direction(down ? SwipeDirection_Down : SwipeDirection_Up);
@@ -251,10 +257,7 @@ static void prv_handle_touch(PebbleEvent *e, void *context) {
       } else if (s_touch.axis == SwipeAxis_Vertical) {
         if (shell_prefs_get_swipe_continuous_scroll() && !prv_is_paged_surface()) {
           // The drag already followed the finger; a flick adds momentum that coasts to a stop.
-          int16_t step = shell_prefs_get_swipe_scroll_step();
-          if (step < 1) {
-            step = 1;
-          }
+          const int16_t step = prv_row_height();
           const int16_t cap = shell_prefs_get_swipe_flick_cap();
           int16_t steps =
               (int16_t)(prv_abs16(s_touch.velocity) * shell_prefs_get_swipe_flick_gain() / step);

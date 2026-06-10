@@ -121,17 +121,15 @@ void shell_prefs_set_swipe_enabled(bool enabled);
 bool shell_prefs_get_swipe_continuous_scroll(void);
 void shell_prefs_set_swipe_continuous_scroll(bool enabled);
 
-// Continuous-scroll feel knobs. A "Scroll Feel" preset sets all three together; advanced mode
-// exposes them individually. scroll_step = finger pixels per scrolled row (lower is faster);
-// flick_gain = how hard a flick throws; flick_cap = max extra rows a flick adds.
-uint8_t shell_prefs_get_swipe_scroll_step(void);
-void shell_prefs_set_swipe_scroll_step(uint8_t px);
+// Flick momentum knobs. A "Momentum" preset sets both together; advanced mode exposes them
+// individually. flick_gain = how hard a flick throws; flick_cap = max extra rows a flick adds.
+// (The drag itself always tracks the finger one row per row-height, so it has no knob.)
 uint8_t shell_prefs_get_swipe_flick_gain(void);
 void shell_prefs_set_swipe_flick_gain(uint8_t gain);
 uint8_t shell_prefs_get_swipe_flick_cap(void);
 void shell_prefs_set_swipe_flick_cap(uint8_t cap);
 
-// When on, the touch settings page exposes the individual scroll-feel knobs above.
+// When on, the touch settings page exposes the individual momentum knobs above.
 bool shell_prefs_get_swipe_scroll_advanced(void);
 void shell_prefs_set_swipe_scroll_advanced(bool advanced);
 

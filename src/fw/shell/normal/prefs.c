@@ -94,9 +94,6 @@ static bool s_swipe_enabled = true;
 #define PREF_KEY_SWIPE_SCROLL "swipeScroll"
 static bool s_swipe_continuous_scroll = true;
 
-#define PREF_KEY_SWIPE_SCROLL_STEP "swipeScrollStep"
-static uint8_t s_swipe_scroll_step = 28;
-
 #define PREF_KEY_SWIPE_FLICK_GAIN "swipeFlickGain"
 static uint8_t s_swipe_flick_gain = 5;
 
@@ -409,12 +406,6 @@ static bool prv_set_s_swipe_enabled(bool *enabled) {
 
 static bool prv_set_s_swipe_continuous_scroll(bool *enabled) {
   s_swipe_continuous_scroll = *enabled;
-  return true;
-}
-
-static bool prv_set_s_swipe_scroll_step(uint8_t *px) {
-  // Pixels-per-row must be non-zero (it is a divisor when scrolling).
-  s_swipe_scroll_step = (*px == 0) ? 1 : *px;
   return true;
 }
 
@@ -1274,14 +1265,6 @@ bool shell_prefs_get_swipe_continuous_scroll(void) {
 
 void shell_prefs_set_swipe_continuous_scroll(bool enabled) {
   prv_pref_set(PREF_KEY_SWIPE_SCROLL, &enabled, sizeof(enabled));
-}
-
-uint8_t shell_prefs_get_swipe_scroll_step(void) {
-  return s_swipe_scroll_step;
-}
-
-void shell_prefs_set_swipe_scroll_step(uint8_t px) {
-  prv_pref_set(PREF_KEY_SWIPE_SCROLL_STEP, &px, sizeof(px));
 }
 
 uint8_t shell_prefs_get_swipe_flick_gain(void) {

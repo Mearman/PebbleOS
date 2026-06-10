@@ -72,7 +72,6 @@
   PREFS_MACRO(PREF_KEY_MUSIC_SHOW_PROGRESS_BAR, s_music_show_progress_bar)
   PREFS_MACRO(PREF_KEY_SWIPE_ENABLED, s_swipe_enabled)
   PREFS_MACRO(PREF_KEY_SWIPE_SCROLL, s_swipe_continuous_scroll)
-  PREFS_MACRO(PREF_KEY_SWIPE_SCROLL_STEP, s_swipe_scroll_step)
   PREFS_MACRO(PREF_KEY_SWIPE_FLICK_GAIN, s_swipe_flick_gain)
   PREFS_MACRO(PREF_KEY_SWIPE_FLICK_CAP, s_swipe_flick_cap)
   PREFS_MACRO(PREF_KEY_SWIPE_SCROLL_ADVANCED, s_swipe_scroll_advanced)
