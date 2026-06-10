@@ -717,6 +717,11 @@
       "md_fn": "airplane_mode_toggle_get_app_info"
     },
     {
+      "id": -85,
+      "enum": "TOUCH_LOCK_TOGGLE",
+      "md_fn": "touch_lock_toggle_get_app_info"
+    },
+    {
       "id": -97,
       "enum": "SPORTS",
       "md_fn": "sports_app_get_info"
