@@ -14,12 +14,12 @@
 #include "pbl/services/touch/touch_event.h"
 #include "shell/prefs.h"
 
-// Touch is only subscribed to (which powers the sensor) while an app is focused, so the sensor and
-// the gesture-wake path are unaffected when nothing is on screen.
+// Touch is subscribed for the whole life of the shell so swipes work everywhere the buttons do -
+// apps, menus, and full-screen modals like notifications (a modal unfocuses the app beneath it, so
+// focus-gating the subscription would drop touch exactly on those screens). The sensor stays
+// powered while the shell runs as a result.
 static Recognizer *s_swipe_recognizer;
-static EventServiceInfo s_focus_event_info;
 static EventServiceInfo s_touch_event_info;
-static bool s_touch_subscribed;
 
 static ButtonId prv_button_for_direction(SwipeDirection direction) {
   // The settings are read live, so changes in Settings take effect immediately. The master switch
@@ -92,36 +92,13 @@ static void prv_handle_touch(PebbleEvent *e, void *context) {
   recognizer_handle_touch_event(s_swipe_recognizer, touch_event);
 }
 
-static void prv_set_touch_active(bool active) {
-  if (active == s_touch_subscribed) {
-    return;
-  }
-  if (active) {
-    s_touch_event_info = (EventServiceInfo) {
-      .type = PEBBLE_TOUCH_EVENT,
-      .handler = prv_handle_touch,
-    };
-    event_service_client_subscribe(&s_touch_event_info);
-  } else {
-    event_service_client_unsubscribe(&s_touch_event_info);
-    if (s_swipe_recognizer) {
-      recognizer_reset(s_swipe_recognizer);
-    }
-  }
-  s_touch_subscribed = active;
-}
-
-static void prv_handle_focus_change(PebbleEvent *e, void *context) {
-  prv_set_touch_active(e->app_focus.in_focus);
-}
-
 void swipe_navigation_init(void) {
   s_swipe_recognizer = swipe_recognizer_create(prv_swipe_event_cb, NULL);
-  s_focus_event_info = (EventServiceInfo) {
-    .type = PEBBLE_APP_DID_CHANGE_FOCUS_EVENT,
-    .handler = prv_handle_focus_change,
+  s_touch_event_info = (EventServiceInfo) {
+    .type = PEBBLE_TOUCH_EVENT,
+    .handler = prv_handle_touch,
   };
-  event_service_client_subscribe(&s_focus_event_info);
+  event_service_client_subscribe(&s_touch_event_info);
 }
 
 #else  // CONFIG_TOUCH
