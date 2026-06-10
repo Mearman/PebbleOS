@@ -13,6 +13,7 @@
 
 typedef enum {
   SwipeSettingRowEnabled = 0,
+  SwipeSettingRowScroll,
   SwipeSettingRowVertical,
   SwipeSettingRowHorizontal,
   SwipeSettingRowCount,
@@ -52,6 +53,11 @@ static void prv_draw_row_cb(SettingsCallbacks *context, GContext *ctx, const Lay
       title = i18n_noop("Swipe Gestures");
       value = shell_prefs_get_swipe_enabled() ? i18n_noop("On") : i18n_noop("Off");
       break;
+    case SwipeSettingRowScroll:
+      title = i18n_noop("Scrolling");
+      value = shell_prefs_get_swipe_continuous_scroll() ? i18n_noop("Continuous")
+                                                        : i18n_noop("Steps");
+      break;
     case SwipeSettingRowVertical:
       title = i18n_noop("Vertical");
       value = prv_mode_label(shell_prefs_get_swipe_vertical_axis_mode());
@@ -70,6 +76,9 @@ static void prv_select_click_cb(SettingsCallbacks *context, uint16_t row) {
   switch (row) {
     case SwipeSettingRowEnabled:
       shell_prefs_set_swipe_enabled(!shell_prefs_get_swipe_enabled());
+      break;
+    case SwipeSettingRowScroll:
+      shell_prefs_set_swipe_continuous_scroll(!shell_prefs_get_swipe_continuous_scroll());
       break;
     case SwipeSettingRowVertical: {
       const SwipeAxisMode next =
