@@ -11,6 +11,7 @@
 #include "kernel/event_loop.h"
 #include "kernel/events.h"
 #include "kernel/ui/modals/modal_manager.h"
+#include "pbl/services/light.h"
 #include "pbl/services/new_timer/new_timer.h"
 #include "pbl/services/touch/touch_event.h"
 #include "process_management/app_manager.h"
@@ -55,6 +56,8 @@ typedef struct {
 } SwipeTouch;
 
 static EventServiceInfo s_touch_event_info;
+static EventServiceInfo s_backlight_event_info;
+static bool s_touch_subscribed;
 static SwipeTouch s_touch;
 
 // Momentum glide state. Mutated only on KernelMain (the touch handler and the hopped timer tick);
@@ -273,13 +276,47 @@ static void prv_handle_touch(PebbleEvent *e, void *context) {
   }
 }
 
+static void prv_set_touch_subscribed(bool want) {
+  if (want == s_touch_subscribed) {
+    return;
+  }
+  s_touch_subscribed = want;
+  if (want) {
+    s_touch_event_info = (EventServiceInfo) {
+      .type = PEBBLE_TOUCH_EVENT,
+      .handler = prv_handle_touch,
+    };
+    event_service_client_subscribe(&s_touch_event_info);
+  } else {
+    event_service_client_unsubscribe(&s_touch_event_info);
+    prv_momentum_stop();
+    s_touch.active = false;
+  }
+}
+
+// Touch is powered (subscribed) only while it can actually be used: the master switch is on and
+// either the screen is lit - the user is interacting - or the always-on preference keeps it
+// powered with the screen off (faster wake and touch-to-wake, at a standby-battery cost). When the
+// screen is off and always-on is off, the sensor sleeps, which is the default.
+static bool prv_should_be_subscribed(bool backlight_on) {
+  if (!shell_prefs_get_swipe_enabled()) {
+    return false;
+  }
+  return backlight_on || shell_prefs_get_swipe_touch_always_on();
+}
+
+static void prv_handle_backlight(PebbleEvent *e, void *context) {
+  prv_set_touch_subscribed(prv_should_be_subscribed(e->backlight.is_on));
+}
+
 void swipe_navigation_init(void) {
   s_momentum_timer = new_timer_create();
-  s_touch_event_info = (EventServiceInfo) {
-    .type = PEBBLE_TOUCH_EVENT,
-    .handler = prv_handle_touch,
+  s_backlight_event_info = (EventServiceInfo) {
+    .type = PEBBLE_BACKLIGHT_EVENT,
+    .handler = prv_handle_backlight,
   };
-  event_service_client_subscribe(&s_touch_event_info);
+  event_service_client_subscribe(&s_backlight_event_info);
+  prv_set_touch_subscribed(prv_should_be_subscribed(light_is_on()));
 }
 
 #else  // CONFIG_TOUCH

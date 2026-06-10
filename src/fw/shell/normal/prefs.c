@@ -106,6 +106,9 @@ static uint8_t s_swipe_flick_cap = 12;
 #define PREF_KEY_SWIPE_SCROLL_ADVANCED "swipeScrollAdv"
 static bool s_swipe_scroll_advanced = false;
 
+#define PREF_KEY_SWIPE_TOUCH_ALWAYS_ON "swipeTouchAlways"
+static bool s_swipe_touch_always_on = false;
+
 #define PREF_KEY_SWIPE_VERTICAL "swipeVertical"
 static uint8_t s_swipe_vertical_axis_mode = SwipeAxisMode_Inverted;
 
@@ -427,6 +430,11 @@ static bool prv_set_s_swipe_flick_cap(uint8_t *cap) {
 
 static bool prv_set_s_swipe_scroll_advanced(bool *advanced) {
   s_swipe_scroll_advanced = *advanced;
+  return true;
+}
+
+static bool prv_set_s_swipe_touch_always_on(bool *always_on) {
+  s_swipe_touch_always_on = *always_on;
   return true;
 }
 
@@ -1298,6 +1306,14 @@ bool shell_prefs_get_swipe_scroll_advanced(void) {
 
 void shell_prefs_set_swipe_scroll_advanced(bool advanced) {
   prv_pref_set(PREF_KEY_SWIPE_SCROLL_ADVANCED, &advanced, sizeof(advanced));
+}
+
+bool shell_prefs_get_swipe_touch_always_on(void) {
+  return s_swipe_touch_always_on;
+}
+
+void shell_prefs_set_swipe_touch_always_on(bool always_on) {
+  prv_pref_set(PREF_KEY_SWIPE_TOUCH_ALWAYS_ON, &always_on, sizeof(always_on));
 }
 
 SwipeAxisMode shell_prefs_get_swipe_vertical_axis_mode(void) {

@@ -135,6 +135,11 @@ void shell_prefs_set_swipe_flick_cap(uint8_t cap);
 bool shell_prefs_get_swipe_scroll_advanced(void);
 void shell_prefs_set_swipe_scroll_advanced(bool advanced);
 
+// When on, the touch sensor stays powered even with the screen off (faster wake and touch-to-wake,
+// at a standby-battery cost). Off (the default) lets the sensor sleep with the screen.
+bool shell_prefs_get_swipe_touch_always_on(void);
+void shell_prefs_set_swipe_touch_always_on(bool always_on);
+
 // Swipe gesture axis modes. Each axis - vertical (up/down) and horizontal
 // (left/right) - can be Off (swipes on that axis do nothing), Normal (the swipe
 // drives the button it points at) or Inverted (the swipe drives the opposite
