@@ -72,6 +72,7 @@
 #include "pbl/services/runlevel.h"
 #include "shell/normal/app_idle_timeout.h"
 #include "shell/normal/watchface.h"
+#include "apps/system_app_ids.h"
 #include "shell/prefs.h"
 #include "shell/shell_event_loop.h"
 #include "shell/system_app_state_machine.h"
@@ -89,6 +90,16 @@
 
 static const uint32_t FORCE_QUIT_HOLD_MS = 1500;
 static int s_back_hold_timer = TIMER_INVALID_ID;
+
+#ifdef CONFIG_TOUCH
+// Holding up + down together toggles the touch lock (launches the touch lock toggle app), so touch
+// can be disabled/enabled from anywhere with the physical buttons.
+#define TOUCH_LOCK_COMBO ((1 << BUTTON_ID_UP) | (1 << BUTTON_ID_DOWN))
+#define TOUCH_LOCK_COMBO_HOLD_MS 600
+static int s_touch_lock_timer = TIMER_INVALID_ID;
+static uint8_t s_touch_combo_state = 0;
+static bool s_touch_combo_engaged = false;
+#endif
 
 #ifndef CONFIG_SHELL_SDK
 static const uint32_t BACK_QUICKPRESS_INTERVAL_TICKS = 300;
@@ -177,9 +188,63 @@ static void back_button_force_quit_handler(void *data) {
   launcher_task_add_callback(launcher_force_quit_app, NULL);
 }
 
+#ifdef CONFIG_TOUCH
+static void prv_touch_lock_toggle_cb(void *data) {
+  app_manager_put_launch_app_event(&(AppLaunchEventConfig) { .id = APP_ID_TOUCH_LOCK_TOGGLE });
+}
+
+static void prv_touch_lock_timer_cb(void *data) {
+  // Runs on the NewTimer thread; hop to the launcher task to launch the toggle app.
+  launcher_task_add_callback(prv_touch_lock_toggle_cb, NULL);
+}
+
+// Tracks the up+down hold. Returns true while the combo is engaged, so the caller suppresses the
+// combo's button events (no quick-launch hold, no app or click action fires from them).
+static bool prv_handle_touch_lock_combo(PebbleEvent *e, ButtonId button_id,
+                                        bool watchface_running) {
+  if (e->type == PEBBLE_BUTTON_DOWN_EVENT) {
+    s_touch_combo_state |= (1 << button_id);
+  } else if (e->type == PEBBLE_BUTTON_UP_EVENT) {
+    s_touch_combo_state &= ~(1 << button_id);
+  }
+
+  const bool both_held = ((s_touch_combo_state & TOUCH_LOCK_COMBO) == TOUCH_LOCK_COMBO);
+
+  if (both_held && !s_touch_combo_engaged) {
+    s_touch_combo_engaged = true;
+    new_timer_start(s_touch_lock_timer, TOUCH_LOCK_COMBO_HOLD_MS, prv_touch_lock_timer_cb, NULL, 0);
+    if (watchface_running) {
+      // Cancel any single-button quick-launch hold started before the second button went down.
+      watchface_reset_click_manager();
+    }
+    return true;
+  }
+
+  if (s_touch_combo_engaged) {
+    if (!both_held) {
+      new_timer_stop(s_touch_lock_timer);
+      if ((s_touch_combo_state & TOUCH_LOCK_COMBO) == 0) {
+        s_touch_combo_engaged = false;
+      }
+    }
+    return true;
+  }
+
+  return false;
+}
+#endif
+
 static void launcher_handle_button_event(PebbleEvent* e) {
   ButtonId button_id = e->button.button_id;
   const bool watchface_running = app_manager_is_watchface_running();
+
+#ifdef CONFIG_TOUCH
+  if (prv_handle_touch_lock_combo(e, button_id, watchface_running)) {
+    // The combo owns these events; keep them away from the app, watchface and modals.
+    e->task_mask |= 1 << PebbleTask_App;
+    return;
+  }
+#endif
 
   // trigger the backlight on any button down event
   if (e->type == PEBBLE_BUTTON_DOWN_EVENT) {
@@ -523,6 +588,9 @@ static void NOINLINE prv_handle_event(PebbleEvent *e) {
 
 static NOINLINE void prv_launcher_main_loop_init(void) {
   s_back_hold_timer = new_timer_create();
+#ifdef CONFIG_TOUCH
+  s_touch_lock_timer = new_timer_create();
+#endif
 
   process_manager_init();
   app_manager_init();
