@@ -88,6 +88,12 @@ static uint8_t s_backlight_touch_wake = BacklightTouchWake_DoubleTap;
 #define PREF_KEY_TOUCH_ENABLED "touchEnabled"
 static bool s_touch_enabled = true;
 
+#define PREF_KEY_SWIPE_VERTICAL "swipeVertical"
+static uint8_t s_swipe_vertical_axis_mode = SwipeAxisMode_Inverted;
+
+#define PREF_KEY_SWIPE_HORIZONTAL "swipeHorizontal"
+static uint8_t s_swipe_horizontal_axis_mode = SwipeAxisMode_Inverted;
+
 #define PREF_KEY_MOTION_SENSITIVITY "motionSensitivity"
 static uint8_t s_motion_sensitivity = 55; // Default to Medium
 
@@ -372,6 +378,24 @@ static bool prv_set_s_touch_enabled(bool *enabled) {
 #ifdef CONFIG_TOUCH
   touch_service_set_globally_enabled(*enabled);
 #endif
+  return true;
+}
+
+static bool prv_set_s_swipe_vertical_axis_mode(uint8_t *mode) {
+  if (*mode >= SwipeAxisModeCount) {
+    s_swipe_vertical_axis_mode = SwipeAxisMode_Inverted;
+    return false;
+  }
+  s_swipe_vertical_axis_mode = *mode;
+  return true;
+}
+
+static bool prv_set_s_swipe_horizontal_axis_mode(uint8_t *mode) {
+  if (*mode >= SwipeAxisModeCount) {
+    s_swipe_horizontal_axis_mode = SwipeAxisMode_Inverted;
+    return false;
+  }
+  s_swipe_horizontal_axis_mode = *mode;
   return true;
 }
 
@@ -1177,6 +1201,24 @@ void backlight_set_touch_wake(BacklightTouchWake wake) {
 
 bool touch_is_globally_enabled(void) {
   return s_touch_enabled;
+}
+
+SwipeAxisMode shell_prefs_get_swipe_vertical_axis_mode(void) {
+  return (SwipeAxisMode)s_swipe_vertical_axis_mode;
+}
+
+void shell_prefs_set_swipe_vertical_axis_mode(SwipeAxisMode mode) {
+  uint8_t value = (uint8_t)mode;
+  prv_pref_set(PREF_KEY_SWIPE_VERTICAL, &value, sizeof(value));
+}
+
+SwipeAxisMode shell_prefs_get_swipe_horizontal_axis_mode(void) {
+  return (SwipeAxisMode)s_swipe_horizontal_axis_mode;
+}
+
+void shell_prefs_set_swipe_horizontal_axis_mode(SwipeAxisMode mode) {
+  uint8_t value = (uint8_t)mode;
+  prv_pref_set(PREF_KEY_SWIPE_HORIZONTAL, &value, sizeof(value));
 }
 
 void touch_set_globally_enabled(bool enable) {
