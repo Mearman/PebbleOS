@@ -6,8 +6,9 @@
 #include "recognizer.h"
 #include "recognizer_impl.h"
 
-// TODO: Implement this correctly:
-// https://pebbletechnology.atlassian.net/browse/PBL-28983
+// Finger travel (px, per axis) beyond which the touch is treated as a drag/swipe, not a tap. The
+// kernel scroll shim handles those; the tap recogniser fails so it doesn't also fire.
+#define TAP_MOVEMENT_THRESHOLD_PX 10
 
 struct TapRecognizerData {
   // Recognizer config
@@ -19,8 +20,9 @@ struct TapRecognizerData {
 
   // Gesture state
   struct {
-    uint16_t taps_detected;
-    uint16_t fingers_down;
+    GPoint start_point;  // where the finger went down
+    GPoint tap_point;    // reported tap location, valid once the gesture completes
+    bool finger_down;
   } state;
 };
 
@@ -35,20 +37,41 @@ static const RecognizerImpl s_tap_recognizer_impl = {
 };
 
 static void prv_handle_touch_event(Recognizer *recognizer, const TouchEvent *touch_event) {
-  TapRecognizerData *data = recognizer_get_impl_data((Recognizer *)recognizer,
-                                                     &s_tap_recognizer_impl);
+  TapRecognizerData *data = recognizer_get_impl_data(recognizer, &s_tap_recognizer_impl);
 
-  // TODO: This is a stub and fails immediately
-  // (https://pebbletechnology.atlassian.net/browse/PBL-28983)
-  (void)data;
-
-  recognizer_transition_state(recognizer, RecognizerState_Failed);
+  switch (touch_event->type) {
+    case TouchEvent_Touchdown:
+      data->state.start_point = GPoint(touch_event->x, touch_event->y);
+      data->state.finger_down = true;
+      break;
+    case TouchEvent_PositionUpdate: {
+      if (!data->state.finger_down) {
+        break;
+      }
+      const int16_t dx = touch_event->x - data->state.start_point.x;
+      const int16_t dy = touch_event->y - data->state.start_point.y;
+      const int16_t adx = (dx < 0) ? -dx : dx;
+      const int16_t ady = (dy < 0) ? -dy : dy;
+      if ((adx > data->config.movement_threshold.x) ||
+          (ady > data->config.movement_threshold.y)) {
+        // Moved too far: this is a drag/swipe, not a tap.
+        recognizer_transition_state(recognizer, RecognizerState_Failed);
+      }
+      break;
+    }
+    case TouchEvent_Liftoff:
+      if (data->state.finger_down) {
+        data->state.finger_down = false;
+        data->state.tap_point = GPoint(touch_event->x, touch_event->y);
+        recognizer_transition_state(recognizer, RecognizerState_Completed);
+      }
+      break;
+  }
 }
 
 static void prv_reset(Recognizer *recognizer) {
-  TapRecognizerData *data = recognizer_get_impl_data((Recognizer *)recognizer,
-                                                     &s_tap_recognizer_impl);
-  (void)data;
+  TapRecognizerData *data = recognizer_get_impl_data(recognizer, &s_tap_recognizer_impl);
+  data->state.finger_down = false;
 }
 
 static bool prv_cancel(Recognizer *recognizer) {
@@ -61,6 +84,7 @@ Recognizer *tap_recognizer_create(RecognizerEventCb event_cb, void *user_data) {
     .config = {
       .taps_required = 1,
       .fingers_required = 1,
+      .movement_threshold = GPoint(TAP_MOVEMENT_THRESHOLD_PX, TAP_MOVEMENT_THRESHOLD_PX),
     },
   };
 
@@ -70,6 +94,11 @@ Recognizer *tap_recognizer_create(RecognizerEventCb event_cb, void *user_data) {
 
 const TapRecognizerData *tap_recognizer_get_data(const Recognizer *recognizer) {
   return recognizer_get_impl_data((Recognizer *)recognizer, &s_tap_recognizer_impl);
+}
+
+GPoint tap_recognizer_get_tap_point(const Recognizer *recognizer) {
+  const TapRecognizerData *data = tap_recognizer_get_data(recognizer);
+  return data ? data->state.tap_point : GPointZero;
 }
 
 void tap_recognizer_set_num_taps_required(Recognizer *recognizer, int num_taps) {

@@ -24,5 +24,9 @@ Recognizer *tap_recognizer_create(RecognizerEventCb event_cb, void *user_data);
 //! @return \ref TapRecognizerData reference
 const TapRecognizerData *tap_recognizer_get_data(const Recognizer *recognizer);
 
+//! Get the screen-space location of the most recent tap. Valid in the event callback once the
+//! recognizer has completed.
+GPoint tap_recognizer_get_tap_point(const Recognizer *recognizer);
+
 // TODO: Add configuration methods & getters for state
 // https://pebbletechnology.atlassian.net/browse/PBL-28983
