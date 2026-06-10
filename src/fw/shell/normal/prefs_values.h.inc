@@ -74,6 +74,7 @@
   PREFS_MACRO(PREF_KEY_SWIPE_SCROLL, s_swipe_continuous_scroll)
   PREFS_MACRO(PREF_KEY_SWIPE_FLICK_GAIN, s_swipe_flick_gain)
   PREFS_MACRO(PREF_KEY_SWIPE_FLICK_CAP, s_swipe_flick_cap)
+  PREFS_MACRO(PREF_KEY_SWIPE_COAST, s_swipe_coast)
   PREFS_MACRO(PREF_KEY_SWIPE_SCROLL_ADVANCED, s_swipe_scroll_advanced)
   PREFS_MACRO(PREF_KEY_SWIPE_TOUCH_ALWAYS_ON, s_swipe_touch_always_on)
   PREFS_MACRO(PREF_KEY_SWIPE_VERTICAL, s_swipe_vertical_axis_mode)

@@ -129,6 +129,11 @@ void shell_prefs_set_swipe_flick_gain(uint8_t gain);
 uint8_t shell_prefs_get_swipe_flick_cap(void);
 void shell_prefs_set_swipe_flick_cap(uint8_t cap);
 
+// Momentum deceleration. The coast step interval grows by 1/coast each step, so a larger value
+// slows down more gently and glides longer. Exposed as the Coast row in advanced mode.
+uint8_t shell_prefs_get_swipe_coast(void);
+void shell_prefs_set_swipe_coast(uint8_t coast);
+
 // When on, the touch settings page exposes the individual momentum knobs above.
 bool shell_prefs_get_swipe_scroll_advanced(void);
 void shell_prefs_set_swipe_scroll_advanced(bool advanced);

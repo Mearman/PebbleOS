@@ -24,6 +24,7 @@ typedef enum {
   RowAdvanced,
   RowFlick,
   RowFlickCap,
+  RowCoast,
   RowVertical,
   RowHorizontal,
   RowAlwaysOn,
@@ -52,6 +53,18 @@ static const ScrollPreset s_presets[] = {
 // can land on (and cycle away from) a preset cleanly.
 static const uint8_t s_gain_options[] = { 0, 14, 28, 50, 80 };
 static const uint8_t s_cap_options[] = { 12, 24, 40, 64 };
+// Coast = momentum interval-growth divisor: larger slows down more gently (longer glide).
+static const uint8_t s_coast_options[] = { 4, 8, 16 };
+
+static const char *prv_coast_label(uint8_t coast) {
+  if (coast >= 16) {
+    return i18n_noop("Long");
+  }
+  if (coast >= 8) {
+    return i18n_noop("Medium");
+  }
+  return i18n_noop("Short");
+}
 
 static uint16_t prv_build_rows(SwipeSettingRow *rows) {
   uint16_t n = 0;
@@ -63,6 +76,7 @@ static uint16_t prv_build_rows(SwipeSettingRow *rows) {
     if (shell_prefs_get_swipe_scroll_advanced()) {
       rows[n++] = RowFlick;
       rows[n++] = RowFlickCap;
+      rows[n++] = RowCoast;
     }
   }
   rows[n++] = RowVertical;
@@ -162,6 +176,10 @@ static void prv_draw_row_cb(SettingsCallbacks *context, GContext *ctx, const Lay
       number = shell_prefs_get_swipe_flick_cap();
       numeric = true;
       break;
+    case RowCoast:
+      title = i18n_noop("Coast");
+      value = prv_coast_label(shell_prefs_get_swipe_coast());
+      break;
     case RowVertical:
       title = i18n_noop("Vertical");
       value = prv_mode_label(shell_prefs_get_swipe_vertical_axis_mode());
@@ -211,6 +229,11 @@ static void prv_select_click_cb(SettingsCallbacks *context, uint16_t row) {
       shell_prefs_set_swipe_flick_cap(
           prv_cycle_option(shell_prefs_get_swipe_flick_cap(), s_cap_options,
                            ARRAY_LENGTH(s_cap_options)));
+      break;
+    case RowCoast:
+      shell_prefs_set_swipe_coast(
+          prv_cycle_option(shell_prefs_get_swipe_coast(), s_coast_options,
+                           ARRAY_LENGTH(s_coast_options)));
       break;
     case RowVertical:
       shell_prefs_set_swipe_vertical_axis_mode(

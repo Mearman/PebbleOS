@@ -100,6 +100,9 @@ static uint8_t s_swipe_flick_gain = 28;
 #define PREF_KEY_SWIPE_FLICK_CAP "swipeFlickCap"
 static uint8_t s_swipe_flick_cap = 24;
 
+#define PREF_KEY_SWIPE_COAST "swipeCoast"
+static uint8_t s_swipe_coast = 16;
+
 #define PREF_KEY_SWIPE_SCROLL_ADVANCED "swipeScrollAdv"
 static bool s_swipe_scroll_advanced = false;
 
@@ -416,6 +419,12 @@ static bool prv_set_s_swipe_flick_gain(uint8_t *gain) {
 
 static bool prv_set_s_swipe_flick_cap(uint8_t *cap) {
   s_swipe_flick_cap = *cap;
+  return true;
+}
+
+static bool prv_set_s_swipe_coast(uint8_t *coast) {
+  // Used as a divisor for the coast interval growth, so it must be non-zero.
+  s_swipe_coast = (*coast == 0) ? 1 : *coast;
   return true;
 }
 
@@ -1281,6 +1290,14 @@ uint8_t shell_prefs_get_swipe_flick_cap(void) {
 
 void shell_prefs_set_swipe_flick_cap(uint8_t cap) {
   prv_pref_set(PREF_KEY_SWIPE_FLICK_CAP, &cap, sizeof(cap));
+}
+
+uint8_t shell_prefs_get_swipe_coast(void) {
+  return s_swipe_coast;
+}
+
+void shell_prefs_set_swipe_coast(uint8_t coast) {
+  prv_pref_set(PREF_KEY_SWIPE_COAST, &coast, sizeof(coast));
 }
 
 bool shell_prefs_get_swipe_scroll_advanced(void) {

@@ -176,7 +176,11 @@ static void prv_momentum_tick(void *data) {
   if (--s_momentum_steps_left <= 0) {
     return;
   }
-  s_momentum_interval_ms += s_momentum_interval_ms / 8;  // slow down ~12% per step
+  int16_t coast = shell_prefs_get_swipe_coast();  // larger divisor = gentler slow-down
+  if (coast < 1) {
+    coast = 1;
+  }
+  s_momentum_interval_ms += s_momentum_interval_ms / coast;
   if (s_momentum_interval_ms > MOMENTUM_MAX_INTERVAL_MS) {
     s_momentum_interval_ms = MOMENTUM_MAX_INTERVAL_MS;
   }
