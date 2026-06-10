@@ -27,8 +27,8 @@
 #define MIN_SWIPE_PX 40
 // Momentum glide: deliver the flick's extra steps over time, slowing down, so a flick coasts to a
 // stop rather than jumping all at once. The interval between injected steps grows each tick.
-#define MOMENTUM_START_INTERVAL_MS 45
-#define MOMENTUM_MAX_INTERVAL_MS 240
+#define MOMENTUM_START_INTERVAL_MS 40
+#define MOMENTUM_MAX_INTERVAL_MS 180
 // The continuous-scroll step, flick gain and flick cap are user-tunable preferences (see the
 // Scroll Feel preset / advanced controls in Settings > Touch).
 
@@ -53,7 +53,8 @@ typedef struct {
   int16_t start_y;
   int16_t last_y;
   int16_t scroll_anchor_y;  // last y at which a continuous scroll step was injected
-  int16_t velocity;         // EMA of vertical movement per update, for the flick on release
+  int16_t velocity;         // lightly-smoothed vertical movement per update
+  int16_t peak_velocity;    // fastest velocity seen during the drag, drives the flick
 } SwipeTouch;
 
 static EventServiceInfo s_touch_event_info;
@@ -175,7 +176,7 @@ static void prv_momentum_tick(void *data) {
   if (--s_momentum_steps_left <= 0) {
     return;
   }
-  s_momentum_interval_ms += s_momentum_interval_ms / 4;  // slow down ~25% per step
+  s_momentum_interval_ms += s_momentum_interval_ms / 8;  // slow down ~12% per step
   if (s_momentum_interval_ms > MOMENTUM_MAX_INTERVAL_MS) {
     s_momentum_interval_ms = MOMENTUM_MAX_INTERVAL_MS;
   }
@@ -217,7 +218,12 @@ static void prv_handle_touch(PebbleEvent *e, void *context) {
         return;
       }
       const int16_t dy_frame = te->y - s_touch.last_y;
-      s_touch.velocity = (int16_t)((s_touch.velocity * 3 + dy_frame) / 4);
+      // Light smoothing so the estimate tracks the flick rather than lagging behind it, and keep
+      // the peak: people ease off just before lifting, so release velocity understates the flick.
+      s_touch.velocity = (int16_t)((s_touch.velocity + dy_frame) / 2);
+      if (prv_abs16(s_touch.velocity) > prv_abs16(s_touch.peak_velocity)) {
+        s_touch.peak_velocity = s_touch.velocity;
+      }
       s_touch.last_y = te->y;
 
       if (s_touch.axis == SwipeAxis_None) {
@@ -260,11 +266,11 @@ static void prv_handle_touch(PebbleEvent *e, void *context) {
           const int16_t step = prv_row_height();
           const int16_t cap = shell_prefs_get_swipe_flick_cap();
           int16_t steps =
-              (int16_t)(prv_abs16(s_touch.velocity) * shell_prefs_get_swipe_flick_gain() / step);
+              (int16_t)(prv_abs16(s_touch.peak_velocity) * shell_prefs_get_swipe_flick_gain() / step);
           if (steps > cap) {
             steps = cap;
           }
-          prv_momentum_start((s_touch.velocity > 0) ? SwipeDirection_Down : SwipeDirection_Up,
+          prv_momentum_start((s_touch.peak_velocity > 0) ? SwipeDirection_Down : SwipeDirection_Up,
                              steps);
         } else if (prv_abs16(dy) >= MIN_SWIPE_PX) {
           // Stepped mode, or a paged surface: one discrete step per swipe.

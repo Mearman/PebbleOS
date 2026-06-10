@@ -43,15 +43,15 @@ typedef struct {
 } ScrollPreset;
 
 static const ScrollPreset s_presets[] = {
-  { .gain = 3, .cap = 6,  .name = i18n_noop("Gentle") },
-  { .gain = 5, .cap = 12, .name = i18n_noop("Standard") },
-  { .gain = 8, .cap = 20, .name = i18n_noop("Fast") },
+  { .gain = 14, .cap = 12, .name = i18n_noop("Gentle") },
+  { .gain = 28, .cap = 24, .name = i18n_noop("Standard") },
+  { .gain = 50, .cap = 40, .name = i18n_noop("Fast") },
 };
 
 // Selectable values for the advanced knobs. Each preset's values appear here so advanced tuning
 // can land on (and cycle away from) a preset cleanly.
-static const uint8_t s_gain_options[] = { 0, 3, 5, 8, 12 };
-static const uint8_t s_cap_options[] = { 6, 12, 20, 32 };
+static const uint8_t s_gain_options[] = { 0, 14, 28, 50, 80 };
+static const uint8_t s_cap_options[] = { 12, 24, 40, 64 };
 
 static uint16_t prv_build_rows(SwipeSettingRow *rows) {
   uint16_t n = 0;

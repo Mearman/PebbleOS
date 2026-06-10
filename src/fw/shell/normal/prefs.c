@@ -95,10 +95,10 @@ static bool s_swipe_enabled = true;
 static bool s_swipe_continuous_scroll = true;
 
 #define PREF_KEY_SWIPE_FLICK_GAIN "swipeFlickGain"
-static uint8_t s_swipe_flick_gain = 5;
+static uint8_t s_swipe_flick_gain = 28;
 
 #define PREF_KEY_SWIPE_FLICK_CAP "swipeFlickCap"
-static uint8_t s_swipe_flick_cap = 12;
+static uint8_t s_swipe_flick_cap = 24;
 
 #define PREF_KEY_SWIPE_SCROLL_ADVANCED "swipeScrollAdv"
 static bool s_swipe_scroll_advanced = false;
