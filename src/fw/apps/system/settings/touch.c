@@ -14,14 +14,14 @@
 
 #include <stdio.h>
 
-// Logical rows. The visible set is built per draw from the current state: the scroll-feel rows
-// only show in continuous mode, and the three knob rows only when advanced mode is on.
+// Logical rows. The visible set is built per draw from the current state: the momentum rows only
+// show in continuous mode, and the two knob rows only when advanced mode is on. (The drag itself
+// always tracks the finger one row per row-height, so it is not configurable.)
 typedef enum {
   RowEnabled,
   RowScrolling,
-  RowScrollFeel,
+  RowMomentum,
   RowAdvanced,
-  RowStep,
   RowFlick,
   RowFlickCap,
   RowVertical,
@@ -35,23 +35,21 @@ typedef struct {
   char value_buf[8];  // scratch for numeric row values during a draw
 } SettingsTouchData;
 
-// Scroll-feel presets bundle the three knobs. Standard matches the built-in defaults.
+// Momentum presets bundle the two flick knobs. Standard matches the built-in defaults.
 typedef struct {
-  uint8_t step;
   uint8_t gain;
   uint8_t cap;
   const char *name;
 } ScrollPreset;
 
 static const ScrollPreset s_presets[] = {
-  { .step = 36, .gain = 3, .cap = 6,  .name = i18n_noop("Gentle") },
-  { .step = 28, .gain = 5, .cap = 12, .name = i18n_noop("Standard") },
-  { .step = 18, .gain = 8, .cap = 20, .name = i18n_noop("Fast") },
+  { .gain = 3, .cap = 6,  .name = i18n_noop("Gentle") },
+  { .gain = 5, .cap = 12, .name = i18n_noop("Standard") },
+  { .gain = 8, .cap = 20, .name = i18n_noop("Fast") },
 };
 
 // Selectable values for the advanced knobs. Each preset's values appear here so advanced tuning
 // can land on (and cycle away from) a preset cleanly.
-static const uint8_t s_step_options[] = { 44, 36, 28, 22, 18 };
 static const uint8_t s_gain_options[] = { 0, 3, 5, 8, 12 };
 static const uint8_t s_cap_options[] = { 6, 12, 20, 32 };
 
@@ -60,10 +58,9 @@ static uint16_t prv_build_rows(SwipeSettingRow *rows) {
   rows[n++] = RowEnabled;
   rows[n++] = RowScrolling;
   if (shell_prefs_get_swipe_continuous_scroll()) {
-    rows[n++] = RowScrollFeel;
+    rows[n++] = RowMomentum;
     rows[n++] = RowAdvanced;
     if (shell_prefs_get_swipe_scroll_advanced()) {
-      rows[n++] = RowStep;
       rows[n++] = RowFlick;
       rows[n++] = RowFlickCap;
     }
@@ -81,11 +78,10 @@ static SwipeSettingRow prv_row_at(uint16_t index) {
 }
 
 static int prv_preset_index(void) {
-  const uint8_t step = shell_prefs_get_swipe_scroll_step();
   const uint8_t gain = shell_prefs_get_swipe_flick_gain();
   const uint8_t cap = shell_prefs_get_swipe_flick_cap();
   for (size_t i = 0; i < ARRAY_LENGTH(s_presets); i++) {
-    if (s_presets[i].step == step && s_presets[i].gain == gain && s_presets[i].cap == cap) {
+    if (s_presets[i].gain == gain && s_presets[i].cap == cap) {
       return (int)i;
     }
   }
@@ -95,7 +91,6 @@ static int prv_preset_index(void) {
 static void prv_apply_next_preset(void) {
   const int current = prv_preset_index();
   const size_t next = (current < 0) ? 0 : (((size_t)current + 1) % ARRAY_LENGTH(s_presets));
-  shell_prefs_set_swipe_scroll_step(s_presets[next].step);
   shell_prefs_set_swipe_flick_gain(s_presets[next].gain);
   shell_prefs_set_swipe_flick_cap(s_presets[next].cap);
 }
@@ -147,8 +142,8 @@ static void prv_draw_row_cb(SettingsCallbacks *context, GContext *ctx, const Lay
       value = shell_prefs_get_swipe_continuous_scroll() ? i18n_noop("Continuous")
                                                         : i18n_noop("Steps");
       break;
-    case RowScrollFeel: {
-      title = i18n_noop("Scroll Feel");
+    case RowMomentum: {
+      title = i18n_noop("Momentum");
       const int preset = prv_preset_index();
       value = (preset >= 0) ? s_presets[preset].name : i18n_noop("Custom");
       break;
@@ -156,11 +151,6 @@ static void prv_draw_row_cb(SettingsCallbacks *context, GContext *ctx, const Lay
     case RowAdvanced:
       title = i18n_noop("Advanced");
       value = shell_prefs_get_swipe_scroll_advanced() ? i18n_noop("On") : i18n_noop("Off");
-      break;
-    case RowStep:
-      title = i18n_noop("Step Size");
-      number = shell_prefs_get_swipe_scroll_step();
-      numeric = true;
       break;
     case RowFlick:
       title = i18n_noop("Flick");
@@ -206,16 +196,11 @@ static void prv_select_click_cb(SettingsCallbacks *context, uint16_t row) {
     case RowScrolling:
       shell_prefs_set_swipe_continuous_scroll(!shell_prefs_get_swipe_continuous_scroll());
       break;
-    case RowScrollFeel:
+    case RowMomentum:
       prv_apply_next_preset();
       break;
     case RowAdvanced:
       shell_prefs_set_swipe_scroll_advanced(!shell_prefs_get_swipe_scroll_advanced());
-      break;
-    case RowStep:
-      shell_prefs_set_swipe_scroll_step(
-          prv_cycle_option(shell_prefs_get_swipe_scroll_step(), s_step_options,
-                           ARRAY_LENGTH(s_step_options)));
       break;
     case RowFlick:
       shell_prefs_set_swipe_flick_gain(
