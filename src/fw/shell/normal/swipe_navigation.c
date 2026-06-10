@@ -22,9 +22,13 @@ static EventServiceInfo s_touch_event_info;
 static bool s_touch_subscribed;
 
 static ButtonId prv_button_for_direction(SwipeDirection direction) {
-  // The per-axis mode is read live, so changing it in Settings takes effect immediately. Normal
-  // drives the button the swipe points at; Inverted drives the opposite, so the content moves the
-  // way a touchscreen drag expects; Off ignores that axis.
+  // The settings are read live, so changes in Settings take effect immediately. The master switch
+  // ignores all swipes when off; otherwise each axis mode drives the button the swipe points at
+  // (Normal), the opposite button (Inverted, so the content moves the way a touchscreen drag
+  // expects) or nothing (Off).
+  if (!shell_prefs_get_swipe_enabled()) {
+    return NUM_BUTTONS;
+  }
   switch (direction) {
     case SwipeDirection_Up:
     case SwipeDirection_Down:

@@ -111,6 +111,11 @@ void backlight_set_touch_wake(BacklightTouchWake wake);
 bool touch_is_globally_enabled(void);
 void touch_set_globally_enabled(bool enable);
 
+// Master on/off switch for swipe gestures. When off, swipes are ignored
+// regardless of the per-axis modes below.
+bool shell_prefs_get_swipe_enabled(void);
+void shell_prefs_set_swipe_enabled(bool enabled);
+
 // Swipe gesture axis modes. Each axis - vertical (up/down) and horizontal
 // (left/right) - can be Off (swipes on that axis do nothing), Normal (the swipe
 // drives the button it points at) or Inverted (the swipe drives the opposite

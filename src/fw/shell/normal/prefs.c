@@ -88,6 +88,9 @@ static uint8_t s_backlight_touch_wake = BacklightTouchWake_DoubleTap;
 #define PREF_KEY_TOUCH_ENABLED "touchEnabled"
 static bool s_touch_enabled = true;
 
+#define PREF_KEY_SWIPE_ENABLED "swipeEnabled"
+static bool s_swipe_enabled = true;
+
 #define PREF_KEY_SWIPE_VERTICAL "swipeVertical"
 static uint8_t s_swipe_vertical_axis_mode = SwipeAxisMode_Inverted;
 
@@ -378,6 +381,11 @@ static bool prv_set_s_touch_enabled(bool *enabled) {
 #ifdef CONFIG_TOUCH
   touch_service_set_globally_enabled(*enabled);
 #endif
+  return true;
+}
+
+static bool prv_set_s_swipe_enabled(bool *enabled) {
+  s_swipe_enabled = *enabled;
   return true;
 }
 
@@ -1201,6 +1209,14 @@ void backlight_set_touch_wake(BacklightTouchWake wake) {
 
 bool touch_is_globally_enabled(void) {
   return s_touch_enabled;
+}
+
+bool shell_prefs_get_swipe_enabled(void) {
+  return s_swipe_enabled;
+}
+
+void shell_prefs_set_swipe_enabled(bool enabled) {
+  prv_pref_set(PREF_KEY_SWIPE_ENABLED, &enabled, sizeof(enabled));
 }
 
 SwipeAxisMode shell_prefs_get_swipe_vertical_axis_mode(void) {
