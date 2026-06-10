@@ -10,6 +10,7 @@
 #include "drivers/button_id.h"
 #include "kernel/event_loop.h"
 #include "kernel/events.h"
+#include "kernel/ui/modals/modal_manager.h"
 #include "pbl/services/new_timer/new_timer.h"
 #include "pbl/services/touch/touch_event.h"
 #include "process_management/app_manager.h"
@@ -71,6 +72,12 @@ static int16_t prv_abs16(int16_t v) {
 // continuous scrolling and momentum would skip pages. On these a vertical swipe is a single
 // discrete step; lists and menus keep continuous scrolling.
 static bool prv_is_paged_surface(void) {
+  // A focused modal (notification, its action menu, a dialog) receives the injected buttons, not
+  // the app beneath it. Modals are list/scroll surfaces, so keep continuous scrolling there even
+  // when the underlying app (e.g. the watchface) is paged.
+  if (modal_manager_get_enabled() && !(modal_manager_get_properties() & ModalProperty_Unfocused)) {
+    return false;
+  }
   if (app_manager_is_watchface_running()) {
     return true;
   }
