@@ -648,6 +648,17 @@ static bool prv_menu_index_at_content_y(MenuLayer *menu_layer, int16_t content_y
   return hit.found;
 }
 
+// Runs from the app event loop (not the recogniser dispatch), so it can safely push windows or
+// launch apps without mutating the window/recogniser state mid-dispatch.
+static void prv_menu_tap_select_timer_cb(void *data) {
+  MenuLayer *menu_layer = data;
+  menu_layer->tap_select_timer = NULL;
+  if (menu_layer->callbacks.select_click) {
+    menu_layer->callbacks.select_click(menu_layer, &menu_layer->selection.index,
+                                       menu_layer->callback_context);
+  }
+}
+
 static void prv_menu_tap_handler(const Recognizer *recognizer, RecognizerEvent event) {
   if (event != RecognizerEvent_Completed) {
     return;
@@ -670,11 +681,13 @@ static void prv_menu_tap_handler(const Recognizer *recognizer, RecognizerEvent e
   if (!prv_menu_index_at_content_y(menu_layer, content_y, &index)) {
     return;
   }
+  // Move the selection now (safe), but defer the select handler to the event loop: it may push a
+  // window or launch an app, which must not happen while the recogniser dispatch is iterating.
   menu_layer_set_selected_index(menu_layer, index, MenuRowAlignNone, false);
-  if (menu_layer->callbacks.select_click) {
-    menu_layer->callbacks.select_click(menu_layer, &menu_layer->selection.index,
-                                       menu_layer->callback_context);
+  if (menu_layer->tap_select_timer) {
+    app_timer_cancel(menu_layer->tap_select_timer);
   }
+  menu_layer->tap_select_timer = app_timer_register(0, prv_menu_tap_select_timer_cb, menu_layer);
 }
 
 // Attach the tap recogniser once the menu layer is in a window (so a recogniser manager exists).
@@ -826,8 +839,14 @@ void menu_layer_pad_bottom_enable(MenuLayer *menu_layer, bool enable) {
 void menu_layer_deinit(MenuLayer *menu_layer) {
   prv_cancel_selection_animation(menu_layer);
 #ifdef CONFIG_TOUCH
+  if (menu_layer->tap_select_timer) {
+    app_timer_cancel(menu_layer->tap_select_timer);
+    menu_layer->tap_select_timer = NULL;
+  }
   if (menu_layer->tap_recognizer) {
     if (menu_layer->tap_recognizer_attached) {
+      // Removes it from the layer list and deregisters from the manager (the menu is still in its
+      // window during unload), so the manager never keeps a pointer to the recogniser we free.
       layer_detach_recognizer(menu_layer_get_layer(menu_layer), menu_layer->tap_recognizer);
       menu_layer->tap_recognizer_attached = false;
     }

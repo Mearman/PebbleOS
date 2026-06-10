@@ -428,6 +428,8 @@ typedef struct MenuLayer {
   //! Tap recogniser for tap-to-open, created in init and attached lazily once the layer has a
   //! window. Drives selecting and opening the cell under a tap.
   Recognizer *tap_recognizer;
+  //! Defers the tap's select handler out of the recogniser touch dispatch (it may push windows).
+  AppTimer *tap_select_timer;
   bool tap_recognizer_attached:1;
 #endif
 
@@ -435,7 +437,7 @@ typedef struct MenuLayer {
   //! As long as the size stays within this budget, 2.x apps can safely use the 3.x MenuLayer type.
   //! When padding is removed, the assertion below should also be removed.
 #ifdef CONFIG_TOUCH
-  uint8_t padding[32];
+  uint8_t padding[28];
 #else
   uint8_t padding[40];
 #endif
