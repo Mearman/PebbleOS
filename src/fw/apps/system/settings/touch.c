@@ -26,6 +26,7 @@ typedef enum {
   RowFlickCap,
   RowVertical,
   RowHorizontal,
+  RowAlwaysOn,
   RowLogicalCount,
 } SwipeSettingRow;
 
@@ -69,6 +70,7 @@ static uint16_t prv_build_rows(SwipeSettingRow *rows) {
   }
   rows[n++] = RowVertical;
   rows[n++] = RowHorizontal;
+  rows[n++] = RowAlwaysOn;
   return n;
 }
 
@@ -178,6 +180,10 @@ static void prv_draw_row_cb(SettingsCallbacks *context, GContext *ctx, const Lay
       title = i18n_noop("Horizontal");
       value = prv_mode_label(shell_prefs_get_swipe_horizontal_axis_mode());
       break;
+    case RowAlwaysOn:
+      title = i18n_noop("Always-On Touch");
+      value = shell_prefs_get_swipe_touch_always_on() ? i18n_noop("On") : i18n_noop("Off");
+      break;
     default:
       WTF;
   }
@@ -228,6 +234,9 @@ static void prv_select_click_cb(SettingsCallbacks *context, uint16_t row) {
     case RowHorizontal:
       shell_prefs_set_swipe_horizontal_axis_mode(
           (shell_prefs_get_swipe_horizontal_axis_mode() + 1) % SwipeAxisModeCount);
+      break;
+    case RowAlwaysOn:
+      shell_prefs_set_swipe_touch_always_on(!shell_prefs_get_swipe_touch_always_on());
       break;
     default:
       WTF;
