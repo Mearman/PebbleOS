@@ -16,13 +16,10 @@
 
 // Finger travel before the gesture commits to a vertical or horizontal axis.
 #define AXIS_LOCK_PX 12
-// Vertical drag per injected scroll step in continuous mode.
-#define SCROLL_STEP_PX 28
 // Minimum travel for a discrete swipe (horizontal navigation, or a stepped vertical swipe).
 #define MIN_SWIPE_PX 40
-// Flick momentum: extra continuous-scroll steps scale with the finger speed at release.
-#define FLICK_GAIN 5
-#define FLICK_MAX_STEPS 12
+// The continuous-scroll step, flick gain and flick cap are user-tunable preferences (see the
+// Scroll Feel preset / advanced controls in Settings > Touch).
 
 typedef enum {
   SwipeDirection_None,
@@ -136,11 +133,14 @@ static void prv_handle_touch(PebbleEvent *e, void *context) {
 
       // Continuous mode: the list follows the finger, one step per row-height of vertical travel.
       if (s_touch.axis == SwipeAxis_Vertical && shell_prefs_get_swipe_continuous_scroll()) {
-        while (prv_abs16(te->y - s_touch.scroll_anchor_y) >= SCROLL_STEP_PX) {
+        int16_t step = shell_prefs_get_swipe_scroll_step();
+        if (step < 1) {
+          step = 1;
+        }
+        while (prv_abs16(te->y - s_touch.scroll_anchor_y) >= step) {
           const bool down = (te->y > s_touch.scroll_anchor_y);
           prv_inject_for_direction(down ? SwipeDirection_Down : SwipeDirection_Up);
-          s_touch.scroll_anchor_y =
-              (int16_t)(s_touch.scroll_anchor_y + (down ? SCROLL_STEP_PX : -SCROLL_STEP_PX));
+          s_touch.scroll_anchor_y = (int16_t)(s_touch.scroll_anchor_y + (down ? step : -step));
         }
       }
       break;
@@ -161,9 +161,15 @@ static void prv_handle_touch(PebbleEvent *e, void *context) {
       } else if (s_touch.axis == SwipeAxis_Vertical) {
         if (shell_prefs_get_swipe_continuous_scroll()) {
           // Flick: keep scrolling a few more steps, scaled to the speed at release.
-          int16_t steps = (int16_t)(prv_abs16(s_touch.velocity) * FLICK_GAIN / SCROLL_STEP_PX);
-          if (steps > FLICK_MAX_STEPS) {
-            steps = FLICK_MAX_STEPS;
+          int16_t step = shell_prefs_get_swipe_scroll_step();
+          if (step < 1) {
+            step = 1;
+          }
+          const int16_t cap = shell_prefs_get_swipe_flick_cap();
+          int16_t steps =
+              (int16_t)(prv_abs16(s_touch.velocity) * shell_prefs_get_swipe_flick_gain() / step);
+          if (steps > cap) {
+            steps = cap;
           }
           const SwipeDirection dir =
               (s_touch.velocity > 0) ? SwipeDirection_Down : SwipeDirection_Up;
