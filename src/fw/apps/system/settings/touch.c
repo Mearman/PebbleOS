@@ -27,9 +27,9 @@ static const char *prv_mode_label(SwipeAxisMode mode) {
     case SwipeAxisMode_Off:
       return i18n_noop("Off");
     case SwipeAxisMode_Normal:
-      return i18n_noop("Normal");
+      return i18n_noop("Standard");
     case SwipeAxisMode_Inverted:
-      return i18n_noop("Inverted");
+      return i18n_noop("Natural");
     case SwipeAxisModeCount:
       break;
   }
