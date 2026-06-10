@@ -77,5 +77,6 @@
   PREFS_MACRO(PREF_KEY_SWIPE_COAST, s_swipe_coast)
   PREFS_MACRO(PREF_KEY_SWIPE_SCROLL_ADVANCED, s_swipe_scroll_advanced)
   PREFS_MACRO(PREF_KEY_SWIPE_TOUCH_ALWAYS_ON, s_swipe_touch_always_on)
+  PREFS_MACRO(PREF_KEY_SWIPE_TAP_TO_OPEN, s_swipe_tap_to_open)
   PREFS_MACRO(PREF_KEY_SWIPE_VERTICAL, s_swipe_vertical_axis_mode)
   PREFS_MACRO(PREF_KEY_SWIPE_HORIZONTAL, s_swipe_horizontal_axis_mode)

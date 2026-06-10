@@ -143,6 +143,10 @@ void shell_prefs_set_swipe_scroll_advanced(bool advanced);
 bool shell_prefs_get_swipe_touch_always_on(void);
 void shell_prefs_set_swipe_touch_always_on(bool always_on);
 
+// When on (the default), tapping a menu item moves the selection there and opens it.
+bool shell_prefs_get_swipe_tap_to_open(void);
+void shell_prefs_set_swipe_tap_to_open(bool enabled);
+
 // Swipe gesture axis modes. Each axis - vertical (up/down) and horizontal
 // (left/right) - can be Off (swipes on that axis do nothing), Normal (the swipe
 // drives the button it points at) or Inverted (the swipe drives the opposite

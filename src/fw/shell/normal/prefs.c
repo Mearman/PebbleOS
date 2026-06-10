@@ -109,6 +109,9 @@ static bool s_swipe_scroll_advanced = false;
 #define PREF_KEY_SWIPE_TOUCH_ALWAYS_ON "swipeTouchAlways"
 static bool s_swipe_touch_always_on = false;
 
+#define PREF_KEY_SWIPE_TAP_TO_OPEN "swipeTapToOpen"
+static bool s_swipe_tap_to_open = true;
+
 #define PREF_KEY_SWIPE_VERTICAL "swipeVertical"
 static uint8_t s_swipe_vertical_axis_mode = SwipeAxisMode_Inverted;
 
@@ -435,6 +438,11 @@ static bool prv_set_s_swipe_scroll_advanced(bool *advanced) {
 
 static bool prv_set_s_swipe_touch_always_on(bool *always_on) {
   s_swipe_touch_always_on = *always_on;
+  return true;
+}
+
+static bool prv_set_s_swipe_tap_to_open(bool *enabled) {
+  s_swipe_tap_to_open = *enabled;
   return true;
 }
 
@@ -1314,6 +1322,14 @@ bool shell_prefs_get_swipe_touch_always_on(void) {
 
 void shell_prefs_set_swipe_touch_always_on(bool always_on) {
   prv_pref_set(PREF_KEY_SWIPE_TOUCH_ALWAYS_ON, &always_on, sizeof(always_on));
+}
+
+bool shell_prefs_get_swipe_tap_to_open(void) {
+  return s_swipe_tap_to_open;
+}
+
+void shell_prefs_set_swipe_tap_to_open(bool enabled) {
+  prv_pref_set(PREF_KEY_SWIPE_TAP_TO_OPEN, &enabled, sizeof(enabled));
 }
 
 SwipeAxisMode shell_prefs_get_swipe_vertical_axis_mode(void) {
