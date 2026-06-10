@@ -12,6 +12,7 @@
 #include "applib/ui/app_window_stack.h"
 #include "applib/ui/layer.h"
 #include "applib/ui/recognizer/recognizer_list.h"
+#include "applib/ui/recognizer/recognizer_manager.h"
 #include "applib/unobstructed_area_service.h"
 #include "kernel/util/segment.h"
 #include "process_management/process_loader.h"
@@ -103,6 +104,7 @@ typedef struct {
 
 #ifdef CONFIG_TOUCH
   RecognizerList recognizer_list;
+  RecognizerManager recognizer_manager;
 #endif
 
   uint8_t *js_runtime_context_buffer;
@@ -209,6 +211,10 @@ NOINLINE void app_state_init(void) {
   tick_timer_service_state_init(app_state_get_tick_timer_service_state());
 
   touch_service_state_init(app_state_get_touch_service_state());
+
+#ifdef CONFIG_TOUCH
+  recognizer_manager_init(app_state_get_recognizer_manager());
+#endif
 
   health_service_state_init(app_state_get_health_service_state());
 
@@ -405,6 +411,10 @@ GBitmap* app_state_legacy2_get_2bit_framebuffer(void) {
 #ifdef CONFIG_TOUCH
 RecognizerList *app_state_get_recognizer_list(void) {
   return &s_app_state_ptr->recognizer_list;
+}
+
+RecognizerManager *app_state_get_recognizer_manager(void) {
+  return &s_app_state_ptr->recognizer_manager;
 }
 #endif
 

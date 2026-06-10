@@ -126,6 +126,16 @@ static void prv_app_button_up_handler(PebbleEvent *e, void *context) {
       &app_state_get_click_manager()->recognizers[e->button.button_id]);
 }
 
+#ifdef CONFIG_TOUCH
+static void prv_app_touch_handler(PebbleEvent *e, void *context) {
+  // Route touch to the focused window's recognizers (the app's single manager). The kernel scroll
+  // shim handles swipes separately; a stationary tap is what the recognizers act on.
+  RecognizerManager *manager = app_state_get_recognizer_manager();
+  recognizer_manager_set_window(manager, app_window_stack_get_top_window());
+  recognizer_manager_handle_touch_event(&e->touch.event, manager);
+}
+#endif
+
 // this handler is called via the legacy2_status_bar_change_event and
 // will update the status bar once a minute for non-fullscreen legacy2 apps
 static void prv_legacy2_status_bar_handler(PebbleEvent *e, void *context) {
@@ -184,6 +194,9 @@ static NOINLINE void prv_handle_deinit_event(void) {
   event_service_client_unsubscribe(&events_info->will_focus_event);
   event_service_client_unsubscribe(&events_info->button_down_event);
   event_service_client_unsubscribe(&events_info->button_up_event);
+#ifdef CONFIG_TOUCH
+  event_service_client_unsubscribe(&events_info->touch_event);
+#endif
   prv_legacy2_status_bar_timer_unsubscribe(); // a no-op on sdk3+ applications
   WindowStack *app_window_stack = app_state_get_window_stack();
   window_stack_lock_push(app_window_stack);
@@ -230,6 +243,13 @@ void app_event_loop_common(void) {
   event_service_client_subscribe(&events_info->will_focus_event);
   event_service_client_subscribe(&events_info->button_down_event);
   event_service_client_subscribe(&events_info->button_up_event);
+#ifdef CONFIG_TOUCH
+  events_info->touch_event = (EventServiceInfo) {
+    .type = PEBBLE_TOUCH_EVENT,
+    .handler = prv_app_touch_handler,
+  };
+  event_service_client_subscribe(&events_info->touch_event);
+#endif
   prv_legacy2_status_bar_timer_subscribe(); // a no-op on sdk3+ applications
 
   event_loop_upkeep();

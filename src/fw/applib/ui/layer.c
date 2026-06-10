@@ -580,9 +580,13 @@ void layer_attach_recognizer(Layer *layer, Recognizer *recognizer) {
   if (!layer || !recognizer) {
     return;
   }
-  recognizer_manager_register_recognizer(window_get_recognizer_manager(layer_get_window(layer)),
-                                         recognizer);
+  // Always track on the layer; only register with a manager if the layer is in a window that has
+  // one (none for modal/kernel windows), so attaching elsewhere is a safe no-op rather than a crash.
   recognizer_add_to_list(recognizer, &layer->recognizer_list);
+  RecognizerManager *manager = window_get_recognizer_manager(layer_get_window(layer));
+  if (manager) {
+    recognizer_manager_register_recognizer(manager, recognizer);
+  }
 #endif
 }
 
@@ -592,8 +596,10 @@ void layer_detach_recognizer(Layer *layer, Recognizer *recognizer) {
     return;
   }
   recognizer_remove_from_list(recognizer, &layer->recognizer_list);
-  recognizer_manager_deregister_recognizer(window_get_recognizer_manager(layer_get_window(layer)),
-                                           recognizer);
+  RecognizerManager *manager = window_get_recognizer_manager(layer_get_window(layer));
+  if (manager) {
+    recognizer_manager_deregister_recognizer(manager, recognizer);
+  }
 #endif
 }
 
