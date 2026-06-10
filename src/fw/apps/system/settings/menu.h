@@ -20,6 +20,9 @@ typedef enum {
   SettingsMenuItemQuickLaunch,
   SettingsMenuItemDateTime,
   SettingsMenuItemDisplay,
+#ifdef CONFIG_TOUCH
+  SettingsMenuItemSwipe,
+#endif
   SettingsMenuItemHealth,
 #ifdef CONFIG_THEMING
   SettingsMenuItemThemes,
