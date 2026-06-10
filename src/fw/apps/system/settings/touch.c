@@ -27,6 +27,7 @@ typedef enum {
   RowCoast,
   RowVertical,
   RowHorizontal,
+  RowTapToOpen,
   RowAlwaysOn,
   RowLogicalCount,
 } SwipeSettingRow;
@@ -81,6 +82,7 @@ static uint16_t prv_build_rows(SwipeSettingRow *rows) {
   }
   rows[n++] = RowVertical;
   rows[n++] = RowHorizontal;
+  rows[n++] = RowTapToOpen;
   rows[n++] = RowAlwaysOn;
   return n;
 }
@@ -188,6 +190,10 @@ static void prv_draw_row_cb(SettingsCallbacks *context, GContext *ctx, const Lay
       title = i18n_noop("Horizontal");
       value = prv_mode_label(shell_prefs_get_swipe_horizontal_axis_mode());
       break;
+    case RowTapToOpen:
+      title = i18n_noop("Tap to Open");
+      value = shell_prefs_get_swipe_tap_to_open() ? i18n_noop("On") : i18n_noop("Off");
+      break;
     case RowAlwaysOn:
       title = i18n_noop("Always-On Touch");
       value = shell_prefs_get_swipe_touch_always_on() ? i18n_noop("On") : i18n_noop("Off");
@@ -242,6 +248,9 @@ static void prv_select_click_cb(SettingsCallbacks *context, uint16_t row) {
     case RowHorizontal:
       shell_prefs_set_swipe_horizontal_axis_mode(
           (shell_prefs_get_swipe_horizontal_axis_mode() + 1) % SwipeAxisModeCount);
+      break;
+    case RowTapToOpen:
+      shell_prefs_set_swipe_tap_to_open(!shell_prefs_get_swipe_tap_to_open());
       break;
     case RowAlwaysOn:
       shell_prefs_set_swipe_touch_always_on(!shell_prefs_get_swipe_touch_always_on());
