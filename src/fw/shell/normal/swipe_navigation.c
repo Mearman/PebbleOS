@@ -6,9 +6,13 @@
 #ifdef CONFIG_TOUCH
 
 #include "applib/event_service_client.h"
+#include "apps/system_app_ids.h"
 #include "drivers/button_id.h"
+#include "kernel/event_loop.h"
 #include "kernel/events.h"
+#include "pbl/services/new_timer/new_timer.h"
 #include "pbl/services/touch/touch_event.h"
+#include "process_management/app_manager.h"
 #include "shell/prefs.h"
 
 #include <stdbool.h>
@@ -18,6 +22,10 @@
 #define AXIS_LOCK_PX 12
 // Minimum travel for a discrete swipe (horizontal navigation, or a stepped vertical swipe).
 #define MIN_SWIPE_PX 40
+// Momentum glide: deliver the flick's extra steps over time, slowing down, so a flick coasts to a
+// stop rather than jumping all at once. The interval between injected steps grows each tick.
+#define MOMENTUM_START_INTERVAL_MS 45
+#define MOMENTUM_MAX_INTERVAL_MS 240
 // The continuous-scroll step, flick gain and flick cap are user-tunable preferences (see the
 // Scroll Feel preset / advanced controls in Settings > Touch).
 
@@ -48,8 +56,37 @@ typedef struct {
 static EventServiceInfo s_touch_event_info;
 static SwipeTouch s_touch;
 
+// Momentum glide state. Mutated only on KernelMain (the touch handler and the hopped timer tick);
+// the timer callback itself only posts the hop, so the state needs no cross-task locking.
+static TimerID s_momentum_timer = TIMER_INVALID_ID;
+static int16_t s_momentum_steps_left;
+static uint32_t s_momentum_interval_ms;
+static SwipeDirection s_momentum_dir;
+
 static int16_t prv_abs16(int16_t v) {
   return (v < 0) ? -v : v;
+}
+
+// Paged surfaces (the watchface and the built-in card/page apps) move a whole screen per click, so
+// continuous scrolling and momentum would skip pages. On these a vertical swipe is a single
+// discrete step; lists and menus keep continuous scrolling.
+static bool prv_is_paged_surface(void) {
+  if (app_manager_is_watchface_running()) {
+    return true;
+  }
+  switch (app_manager_get_current_app_id()) {
+    case APP_ID_TIMELINE:
+    case APP_ID_TIMELINE_PAST:
+    case APP_ID_TIMELINE_FULL:
+    case APP_ID_HEALTH_APP:
+    case APP_ID_MUSIC:
+    case APP_ID_WEATHER:
+    case APP_ID_WORKOUT:
+    case APP_ID_SPORTS:
+      return true;
+    default:
+      return false;
+  }
 }
 
 // Maps a swipe direction to the button it drives, honouring the live per-axis settings: the master
@@ -101,10 +138,51 @@ static void prv_inject_for_direction(SwipeDirection direction) {
   event_put(&(PebbleEvent) { .type = PEBBLE_BUTTON_UP_EVENT, .button.button_id = button });
 }
 
+static void prv_momentum_stop(void) {
+  s_momentum_steps_left = 0;
+  if (s_momentum_timer != TIMER_INVALID_ID) {
+    new_timer_stop(s_momentum_timer);
+  }
+}
+
+static void prv_momentum_timer_cb(void *data);
+
+// Runs on KernelMain (hopped from the timer): inject one glide step, decelerate, re-arm or finish.
+static void prv_momentum_tick(void *data) {
+  if (s_momentum_steps_left <= 0) {
+    return;
+  }
+  prv_inject_for_direction(s_momentum_dir);
+  if (--s_momentum_steps_left <= 0) {
+    return;
+  }
+  s_momentum_interval_ms += s_momentum_interval_ms / 4;  // slow down ~25% per step
+  if (s_momentum_interval_ms > MOMENTUM_MAX_INTERVAL_MS) {
+    s_momentum_interval_ms = MOMENTUM_MAX_INTERVAL_MS;
+  }
+  new_timer_start(s_momentum_timer, s_momentum_interval_ms, prv_momentum_timer_cb, NULL, 0);
+}
+
+// Runs on the NewTimers task: hop the actual work to KernelMain so glide state stays single-task.
+static void prv_momentum_timer_cb(void *data) {
+  launcher_task_add_callback(prv_momentum_tick, NULL);
+}
+
+static void prv_momentum_start(SwipeDirection dir, int16_t steps) {
+  if (steps <= 0 || s_momentum_timer == TIMER_INVALID_ID) {
+    return;
+  }
+  s_momentum_dir = dir;
+  s_momentum_steps_left = steps;
+  s_momentum_interval_ms = MOMENTUM_START_INTERVAL_MS;
+  new_timer_start(s_momentum_timer, s_momentum_interval_ms, prv_momentum_timer_cb, NULL, 0);
+}
+
 static void prv_handle_touch(PebbleEvent *e, void *context) {
   const TouchEvent *te = &e->touch.event;
   switch (te->type) {
     case TouchEvent_Touchdown:
+      prv_momentum_stop();  // a new touch stops any ongoing glide
       s_touch = (SwipeTouch) {
         .active = true,
         .axis = SwipeAxis_None,
@@ -132,7 +210,9 @@ static void prv_handle_touch(PebbleEvent *e, void *context) {
       }
 
       // Continuous mode: the list follows the finger, one step per row-height of vertical travel.
-      if (s_touch.axis == SwipeAxis_Vertical && shell_prefs_get_swipe_continuous_scroll()) {
+      // Skipped on paged surfaces, where a swipe is a single discrete step (handled on liftoff).
+      if (s_touch.axis == SwipeAxis_Vertical && shell_prefs_get_swipe_continuous_scroll() &&
+          !prv_is_paged_surface()) {
         int16_t step = shell_prefs_get_swipe_scroll_step();
         if (step < 1) {
           step = 1;
@@ -159,8 +239,8 @@ static void prv_handle_touch(PebbleEvent *e, void *context) {
           prv_inject_for_direction((dx > 0) ? SwipeDirection_Right : SwipeDirection_Left);
         }
       } else if (s_touch.axis == SwipeAxis_Vertical) {
-        if (shell_prefs_get_swipe_continuous_scroll()) {
-          // Flick: keep scrolling a few more steps, scaled to the speed at release.
+        if (shell_prefs_get_swipe_continuous_scroll() && !prv_is_paged_surface()) {
+          // The drag already followed the finger; a flick adds momentum that coasts to a stop.
           int16_t step = shell_prefs_get_swipe_scroll_step();
           if (step < 1) {
             step = 1;
@@ -171,12 +251,10 @@ static void prv_handle_touch(PebbleEvent *e, void *context) {
           if (steps > cap) {
             steps = cap;
           }
-          const SwipeDirection dir =
-              (s_touch.velocity > 0) ? SwipeDirection_Down : SwipeDirection_Up;
-          for (int16_t i = 0; i < steps; i++) {
-            prv_inject_for_direction(dir);
-          }
+          prv_momentum_start((s_touch.velocity > 0) ? SwipeDirection_Down : SwipeDirection_Up,
+                             steps);
         } else if (prv_abs16(dy) >= MIN_SWIPE_PX) {
+          // Stepped mode, or a paged surface: one discrete step per swipe.
           prv_inject_for_direction((dy > 0) ? SwipeDirection_Down : SwipeDirection_Up);
         }
       }
@@ -189,6 +267,7 @@ static void prv_handle_touch(PebbleEvent *e, void *context) {
 }
 
 void swipe_navigation_init(void) {
+  s_momentum_timer = new_timer_create();
   s_touch_event_info = (EventServiceInfo) {
     .type = PEBBLE_TOUCH_EVENT,
     .handler = prv_handle_touch,
