@@ -453,7 +453,6 @@ void test_touch__toggle_off_without_finger_no_liftoff(void) {
   touch_service_set_globally_enabled(true);
 }
 
-<<<<<<< HEAD
 void test_touch__injected_touch_arms_the_session(void) {
   // Injection is deliberate interaction: without arming, contact on the idle watchface is dropped
   // as unarmed and the whole gesture goes nowhere.
