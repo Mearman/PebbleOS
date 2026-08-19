@@ -453,6 +453,7 @@ void test_touch__toggle_off_without_finger_no_liftoff(void) {
   touch_service_set_globally_enabled(true);
 }
 
+<<<<<<< HEAD
 void test_touch__injected_touch_arms_the_session(void) {
   // Injection is deliberate interaction: without arming, contact on the idle watchface is dropped
   // as unarmed and the whole gesture goes nowhere.
@@ -589,6 +590,26 @@ void test_touch__reset_mid_gesture_refuses_continuation(void) {
   cl_assert(touch_handle_injected_update(TouchInjectPhase_Begin, 50, 60));
   prv_assert_touch_event(TouchEvent_Touchdown, 50, 60);
   touch_handle_injected_update(TouchInjectPhase_End, 50, 60);
+}
+
+void test_touch__last_unsubscribe_with_finger_down_emits_liftoff(void) {
+  // Finger down, then the last subscriber goes away: the sensor powers down mid-gesture, so a Liftoff must be synthesized with the last coordinates (not zeros) or the backlight hold taken by the Touchdown never unwinds — the same teardown the global toggle performs.
+  s_add_subscriber_cb(PebbleTask_App);
+  touch_handle_update(TouchState_FingerDown, 30, 40);
+  fake_event_reset_count();
+
+  s_remove_subscriber_cb(PebbleTask_App);
+  cl_assert_equal_i(fake_event_get_count(), 1);
+  prv_assert_touch_event(TouchEvent_Liftoff, 30, 40);
+}
+
+void test_touch__last_unsubscribe_without_finger_no_liftoff(void) {
+  // No finger down: the last subscriber leaving must not fabricate a Liftoff.
+  s_add_subscriber_cb(PebbleTask_App);
+  fake_event_reset_count();
+
+  s_remove_subscriber_cb(PebbleTask_App);
+  cl_assert_equal_i(fake_event_get_count(), 0);
 }
 
 void test_touch__event_abi_unchanged(void) {
